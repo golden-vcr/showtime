@@ -27,6 +27,5 @@ Once your `.env` file is populated, you should be able to build and run the serv
 
 - `go run cmd/server/main.go`
 
-If successful, you should be able to run `curl -X POST http://localhost:5001/callback`
-and receive a 400 error, and the server should print
-`Failed to verify signature from callback request`.
+If successful, you should be able to run `curl http://localhost:5001/status` and
+receive a response.
