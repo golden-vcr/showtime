@@ -2,16 +2,20 @@ package server
 
 import (
 	"net/http"
+
+	"github.com/golden-vcr/showtime/internal/eventsub"
 )
 
 type Server struct {
 	http.Handler
 
+	eventsub      *eventsub.Client
 	webhookSecret string
 }
 
-func New(webhookSecret string) *Server {
+func New(eventsubClient *eventsub.Client, webhookSecret string) *Server {
 	s := &Server{
+		eventsub:      eventsubClient,
 		webhookSecret: webhookSecret,
 	}
 	mux := http.NewServeMux()
