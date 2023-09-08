@@ -1,0 +1,8 @@
+github.com/codingconcepts/env v0.0.0-20200821220118-a8fbf8d84482 h1:5/aEFreBh9hH/0G+33xtczJCvMaulqsm9nDuu2BZUEo=
+github.com/codingconcepts/env v0.0.0-20200821220118-a8fbf8d84482/go.mod h1:TM9ug+H/2cI3EjyIDr5xKCkFGyNE59URgH1wu5NyU8E=
+github.com/golang-jwt/jwt/v4 v4.0.0 h1:RAqyYixv1p7uEnocuy8P1nru5wprCh/MH2BIlW5z5/o=
+github.com/golang-jwt/jwt/v4 v4.0.0/go.mod h1:/xlHOz8bRuivTWchD4jCa+NbatV+wEUSzwAxVc6locg=
+github.com/joho/godotenv v1.5.1 h1:7eLL/+HRGLY0ldzfGMeQkb7vMd0as4CfYvUVzLqw0N0=
+github.com/joho/godotenv v1.5.1/go.mod h1:f4LDr5Voq0i2e/R5DDNOoa2zzDfwtkZa6DnEwAbqwq4=
+github.com/nicklaw5/helix/v2 v2.25.0 h1:jVLNxDOFECtEjYLPK22YRZedvRPE61tmaAyCvP0lZlI=
+github.com/nicklaw5/helix/v2 v2.25.0/go.mod h1:zZcKsyyBWDli34x3QleYsVMiiNGMXPAEU5NjsiZDtvY=
