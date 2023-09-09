@@ -83,6 +83,86 @@ func (c *Client) GetOwnedSubscriptions() ([]helix.EventSubSubscription, error) {
 	return subscriptions, nil
 }
 
+func (c *Client) ReconcileRequiredSubscriptions(required []Subscription, owned []helix.EventSubSubscription) (*ReconcileResult, error) {
+	params := ConditionParams{
+		ChannelUserId: c.channelUserId,
+	}
+
+	requiredSubscriptionsByExistingId := make(map[string]Subscription)
+	requiredSubscriptionsThatDoNotExist := make([]Subscription, 0)
+	for i, requiredSubscription := range required {
+		requiredCondition, err := params.format(&requiredSubscription.Condition)
+		if err != nil {
+			return nil, fmt.Errorf("failed to format condition for required subscription at index %d: %w", i, err)
+		}
+		subscription := findMatchingSubscription(owned, requiredSubscription.Type, requiredSubscription.Version, requiredCondition)
+		if subscription != nil {
+			requiredSubscriptionsByExistingId[subscription.ID] = requiredSubscription
+		} else {
+			requiredSubscriptionsThatDoNotExist = append(requiredSubscriptionsThatDoNotExist, requiredSubscription)
+		}
+	}
+
+	relevantSubscriptions := make([]ExistingSubscription, 0)
+	irrelevantSubscriptions := make([]helix.EventSubSubscription, 0)
+	for i := range owned {
+		requiredSubscription, isRelevant := requiredSubscriptionsByExistingId[owned[i].ID]
+		if isRelevant {
+			relevantSubscriptions = append(relevantSubscriptions, ExistingSubscription{
+				Value:    owned[i],
+				Required: requiredSubscription,
+			})
+		} else {
+			irrelevantSubscriptions = append(irrelevantSubscriptions, owned[i])
+		}
+	}
+
+	return &ReconcileResult{
+		ToDelete: irrelevantSubscriptions,
+		ToCreate: requiredSubscriptionsThatDoNotExist,
+		Existing: relevantSubscriptions,
+	}, nil
+}
+
+func (c *Client) CreateSubscription(required Subscription) error {
+	params := ConditionParams{
+		ChannelUserId: c.channelUserId,
+	}
+	requiredCondition, err := params.format(&required.Condition)
+	if err != nil {
+		return fmt.Errorf("failed to format condition for required '%s' subscription: %v", required.Type, err)
+	}
+
+	r, err := c.CreateEventSubSubscription(&helix.EventSubSubscription{
+		Type:      required.Type,
+		Version:   required.Version,
+		Condition: *requiredCondition,
+		Transport: helix.EventSubTransport{
+			Method:   "webhook",
+			Callback: c.webhookCallbackUrl,
+			Secret:   c.webhookSecret,
+		},
+	})
+	if err != nil {
+		return err
+	}
+	if r.StatusCode != 202 {
+		return fmt.Errorf("got response %d from create subscriptions request: %s", r.StatusCode, r.ErrorMessage)
+	}
+	return nil
+}
+
+func (c *Client) DeleteSubscription(subscriptionId string) error {
+	r, err := c.RemoveEventSubSubscription(subscriptionId)
+	if err != nil {
+		return err
+	}
+	if r.StatusCode != 200 {
+		return fmt.Errorf("got response %d from delete subscriptions request: %s", r.StatusCode, r.ErrorMessage)
+	}
+	return nil
+}
+
 func getChannelUserId(client *helix.Client, channelName string) (string, error) {
 	r, err := client.GetUsers(&helix.UsersParams{
 		Logins: []string{channelName},
@@ -97,4 +177,32 @@ func getChannelUserId(client *helix.Client, channelName string) (string, error) 
 		return "", fmt.Errorf("got %d results from get users request; expected exactly 1", len(r.Data.Users))
 	}
 	return r.Data.Users[0].ID, nil
+}
+
+func findMatchingSubscription(subscriptions []helix.EventSubSubscription, requiredType string, requiredVersion string, requiredCondition *helix.EventSubCondition) *helix.EventSubSubscription {
+	for i := range subscriptions {
+		subscription := &subscriptions[i]
+		if subscription.Type != requiredType {
+			continue
+		}
+		if subscription.Version != requiredVersion {
+			continue
+		}
+		if !areConditionsEqual(&subscription.Condition, requiredCondition) {
+			continue
+		}
+		return subscription
+	}
+	return nil
+}
+
+func areConditionsEqual(lhs *helix.EventSubCondition, rhs *helix.EventSubCondition) bool {
+	return (lhs.BroadcasterUserID == rhs.BroadcasterUserID &&
+		lhs.FromBroadcasterUserID == rhs.FromBroadcasterUserID &&
+		lhs.ModeratorUserID == rhs.ModeratorUserID &&
+		lhs.ToBroadcasterUserID == rhs.ToBroadcasterUserID &&
+		lhs.RewardID == rhs.RewardID &&
+		lhs.ClientID == rhs.ClientID &&
+		lhs.ExtensionClientID == rhs.ExtensionClientID &&
+		lhs.UserID == rhs.UserID)
 }

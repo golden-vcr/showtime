@@ -45,11 +45,12 @@ func (s *Server) handlePostCallback(res http.ResponseWriter, req *http.Request) 
 	}
 
 	if payload.Challenge != "" {
-		fmt.Printf("Responding to challenge with %q", payload.Challenge)
+		fmt.Printf("Responding to challenge with %q\n", payload.Challenge)
 		res.Write([]byte(payload.Challenge))
 		return
 	}
 
-	fmt.Printf("Got event of subscription of type %q\n", payload.Subscription.Type)
+	fmt.Printf("Got event of type %q\n", payload.Subscription.Type)
+	fmt.Printf("- %s\n", string(payload.Event))
 	res.WriteHeader(http.StatusOK)
 }
