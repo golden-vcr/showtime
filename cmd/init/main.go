@@ -57,7 +57,13 @@ func main() {
 
 	// Initialize a Twitch API client so we can use EventSub API endpoints to manage
 	// event subscriptions
-	client, err := eventsub.NewClient(config.TwitchChannelName, config.TwitchClientId, config.TwitchClientSecret, config.TwitchWebhookCallbackUrl, config.TwitchWebhookSecret)
+	client, err := eventsub.NewClient(
+		config.TwitchChannelName,
+		config.TwitchClientId,
+		config.TwitchClientSecret,
+		config.TwitchWebhookCallbackUrl,
+		config.TwitchWebhookSecret,
+		showtime.RequiredSubscriptions)
 	if err != nil {
 		log.Fatalf("failed to initialize Twitch API client: %v", err)
 	}
@@ -74,7 +80,7 @@ func main() {
 	}
 
 	// Reconcile that list against the declared set of subscriptions that we require
-	reconciled, err := client.ReconcileRequiredSubscriptions(showtime.RequiredSubscriptions, subscriptions)
+	reconciled, err := client.ReconcileRequiredSubscriptions(subscriptions)
 	if err != nil {
 		log.Fatalf("failed to reconcile required subscriptions: %v", err)
 	}
@@ -135,5 +141,5 @@ func main() {
 		fmt.Printf("Relevant %s events will now notify: %s\n", required.Type, config.TwitchWebhookCallbackUrl)
 	}
 
-	fmt.Printf("\nAll required subscriptions to %s (as declared events.go) exist.\n", config.TwitchWebhookCallbackUrl)
+	fmt.Printf("\nAll required subscriptions to %s (as declared in events.go) exist.\n", config.TwitchWebhookCallbackUrl)
 }

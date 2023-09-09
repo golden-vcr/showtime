@@ -13,9 +13,11 @@ type Client struct {
 	channelUserId      string
 	webhookCallbackUrl string
 	webhookSecret      string
+
+	requiredSubscriptions []Subscription
 }
 
-func NewClient(channelName string, clientId string, clientSecret string, webhookCallbackUrl string, webhookSecret string) (*Client, error) {
+func NewClient(channelName string, clientId string, clientSecret string, webhookCallbackUrl string, webhookSecret string, requiredSubscriptions []Subscription) (*Client, error) {
 	// Create a Twitch API client, which our eventsub.Client will wrap
 	hc, err := helix.NewClient(&helix.Options{
 		ClientID:     clientId,
@@ -39,11 +41,12 @@ func NewClient(channelName string, clientId string, clientSecret string, webhook
 	}
 
 	return &Client{
-		Client:             hc,
-		channelName:        channelName,
-		channelUserId:      channelUserId,
-		webhookCallbackUrl: webhookCallbackUrl,
-		webhookSecret:      webhookSecret,
+		Client:                hc,
+		channelName:           channelName,
+		channelUserId:         channelUserId,
+		webhookCallbackUrl:    webhookCallbackUrl,
+		webhookSecret:         webhookSecret,
+		requiredSubscriptions: requiredSubscriptions,
 	}, nil
 }
 
@@ -83,14 +86,14 @@ func (c *Client) GetOwnedSubscriptions() ([]helix.EventSubSubscription, error) {
 	return subscriptions, nil
 }
 
-func (c *Client) ReconcileRequiredSubscriptions(required []Subscription, owned []helix.EventSubSubscription) (*ReconcileResult, error) {
+func (c *Client) ReconcileRequiredSubscriptions(owned []helix.EventSubSubscription) (*ReconcileResult, error) {
 	params := ConditionParams{
 		ChannelUserId: c.channelUserId,
 	}
 
 	requiredSubscriptionsByExistingId := make(map[string]Subscription)
 	requiredSubscriptionsThatDoNotExist := make([]Subscription, 0)
-	for i, requiredSubscription := range required {
+	for i, requiredSubscription := range c.requiredSubscriptions {
 		requiredCondition, err := params.format(&requiredSubscription.Condition)
 		if err != nil {
 			return nil, fmt.Errorf("failed to format condition for required subscription at index %d: %w", i, err)

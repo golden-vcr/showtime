@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+
+	"github.com/nicklaw5/helix/v2"
 )
 
 func (s *Server) handleStatus(res http.ResponseWriter, req *http.Request) {
@@ -35,8 +37,33 @@ func (s *Server) resolveStatus() Status {
 		}
 	}
 
+	reconciled, err := s.eventsub.ReconcileRequiredSubscriptions(subscriptions)
+	if err != nil {
+		return Status{
+			IsReady: false,
+			Message: fmt.Sprintf(
+				"Unable to ascertain status of required Twitch event subscriptions. This may indicate a problem with the Golden VCR server. (Error: %s)",
+				err.Error(),
+			),
+		}
+	}
+	if len(reconciled.ToCreate) > 0 {
+		return Status{
+			IsReady: false,
+			Message: "One or more required Twitch event subscriptions do not yet exist. The Golden VCR server may not be receiving all required data from Twitch.",
+		}
+	}
+	for _, existing := range reconciled.Existing {
+		if existing.Value.Status != helix.EventSubStatusEnabled {
+			return Status{
+				IsReady: false,
+				Message: "One or more required Twitch event subscriptions are disabled. The Golden VCR server may not be receiving all required data from Twitch.",
+			}
+		}
+	}
+
 	return Status{
-		IsReady: false,
-		Message: "Twitch EventSub API integration has not yet been fully implemented. Twitch Events will not be received.",
+		IsReady: true,
+		Message: "All required Twitch Events subscriptions are enabled. The Golden VCR server will receive Twitch events!",
 	}
 }

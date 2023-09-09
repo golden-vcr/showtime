@@ -9,6 +9,7 @@ import (
 	"github.com/codingconcepts/env"
 	"github.com/joho/godotenv"
 
+	"github.com/golden-vcr/showtime"
 	"github.com/golden-vcr/showtime/internal/eventsub"
 	"github.com/golden-vcr/showtime/internal/server"
 )
@@ -34,7 +35,13 @@ func main() {
 		log.Fatalf("error loading config: %v", err)
 	}
 
-	eventsubClient, err := eventsub.NewClient(config.TwitchChannelName, config.TwitchClientId, config.TwitchClientSecret, config.TwitchWebhookCallbackUrl, config.TwitchWebhookSecret)
+	eventsubClient, err := eventsub.NewClient(
+		config.TwitchChannelName,
+		config.TwitchClientId,
+		config.TwitchClientSecret,
+		config.TwitchWebhookCallbackUrl,
+		config.TwitchWebhookSecret,
+		showtime.RequiredSubscriptions)
 	if err != nil {
 		log.Fatalf("error initializing Twitch EventSub API client: %v", err)
 	}

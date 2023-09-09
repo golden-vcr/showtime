@@ -41,7 +41,8 @@ func PromptForCodeGrant(ctx context.Context, twitchAppClientId string, scopes []
 
 	// Don't run the server for more than a few minutes; if the user doesn't respond to
 	// the authorization request, we want to abort eventually
-	ctx, _ = context.WithTimeout(ctx, 5*time.Minute)
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Minute)
+	defer cancel()
 
 	// Handle GET /auth so we can capture the auth code grant
 	codeChannel := make(chan *AuthorizationCode, 1)
