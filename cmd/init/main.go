@@ -33,28 +33,6 @@ func main() {
 	}
 	fmt.Printf("Configured for Twitch channel: %s\n", config.TwitchChannelName)
 
-	// Open a web browser and prompt the user to log into their Twitch account and
-	// grant access to the Golden VCR app with the requested scopes. This initiates an
-	// OAuth code grant flow, giving us an authorization code that can be exchanged for
-	// a user access token.
-	//
-	// Note that our Twitch app MUST be configured with a redirect URL matching the
-	// supplied port (e.g. 'http://localhost:3033/auth'), and that port must be free
-	// for us to run a small HTTP server on for the duration of this function call
-	//
-	// Note also that we don't actually need to exchange the authoriztaion code for a
-	// user access token, because all of the EventSub API operations used by this
-	// program (i.e. creating subscriptions and querying the status of existing
-	// subscriptions) use an application access token. However, the individual events
-	// that we're subscribing to still require that the user (i.e. the Twitch channel)
-	// we're getting events for has authorized our app. Until the user explicitly
-	// grants authorization via an in-browser OAuth flow, the Twitch API will respond
-	// with 403 errors when we attempt to create EventSub subscriptions.
-	_, err = eventsub.PromptForCodeGrant(context.Background(), config.TwitchClientId, showtime.GetRequiredUserScopes(), 3033)
-	if err != nil {
-		log.Fatalf("failed to get user authorization: %v", err)
-	}
-
 	// Initialize a Twitch API client so we can use EventSub API endpoints to manage
 	// event subscriptions
 	client, err := eventsub.NewClient(
@@ -79,6 +57,21 @@ func main() {
 		fmt.Printf("- [%s] %s v%s (%s)\n", subscription.Status, subscription.Type, subscription.Version, subscription.ID)
 	}
 
+	// If the user just wants to nuke everything and start fresh, delete all
+	// subscriptions and exit
+	deleteAll := len(os.Args) > 1 && os.Args[1] == "delete-all"
+	if deleteAll {
+		fmt.Printf("Deleting all %d event subscriptions that notify %s...\n", len(subscriptions), config.TwitchWebhookCallbackUrl)
+		for _, subscription := range subscriptions {
+			if err := client.DeleteSubscription(subscription.ID); err != nil {
+				log.Fatalf("Failed to delete subscription %s: %v", subscription.ID, err)
+			}
+			fmt.Printf("Subscription %s deleted.\n", subscription.ID)
+		}
+		fmt.Printf("Done.\n")
+		os.Exit(0)
+	}
+
 	// Reconcile that list against the declared set of subscriptions that we require
 	reconciled, err := client.ReconcileRequiredSubscriptions(subscriptions)
 	if err != nil {
@@ -93,6 +86,28 @@ func main() {
 		if existing.Value.Status != helix.EventSubStatusPending && existing.Value.Status != helix.EventSubStatusEnabled {
 			nonEnabledSubscriptions = append(nonEnabledSubscriptions, existing)
 		}
+	}
+
+	// Open a web browser and prompt the user to log into their Twitch account and
+	// grant access to the Golden VCR app with the requested scopes. This initiates an
+	// OAuth code grant flow, giving us an authorization code that can be exchanged for
+	// a user access token.
+	//
+	// Note that our Twitch app MUST be configured with a redirect URL matching the
+	// supplied port (e.g. 'http://localhost:3033/auth'), and that port must be free
+	// for us to run a small HTTP server on for the duration of this function call
+	//
+	// Note also that we don't actually need to exchange the authoriztaion code for a
+	// user access token, because all of the EventSub API operations used by this
+	// program (i.e. creating subscriptions and querying the status of existing
+	// subscriptions) use an application access token. However, the individual events
+	// that we're subscribing to still require that the user (i.e. the Twitch channel)
+	// we're getting events for has authorized our app. Until the user explicitly
+	// grants authorization via an in-browser OAuth flow, the Twitch API will respond
+	// with 403 errors when we attempt to create EventSub subscriptions.
+	_, err = eventsub.PromptForCodeGrant(context.Background(), config.TwitchClientId, showtime.GetRequiredUserScopes(), 3033)
+	if err != nil {
+		log.Fatalf("failed to get user authorization: %v", err)
 	}
 
 	// If we have subscriptions that we need to delete, get rid of them before doing

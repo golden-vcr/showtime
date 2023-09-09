@@ -160,7 +160,7 @@ func (c *Client) DeleteSubscription(subscriptionId string) error {
 	if err != nil {
 		return err
 	}
-	if r.StatusCode != 200 {
+	if r.StatusCode != 204 {
 		return fmt.Errorf("got response %d from delete subscriptions request: %s", r.StatusCode, r.ErrorMessage)
 	}
 	return nil
