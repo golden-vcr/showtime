@@ -37,6 +37,7 @@ func (s *Server) handleAlerts(res http.ResponseWriter, req *http.Request) {
 	for {
 		select {
 		case <-time.After(30 * time.Second):
+			fmt.Printf(">> sending keepalive\n")
 			res.Write([]byte(":\n\n"))
 			res.(http.Flusher).Flush()
 		case alert := <-ch:
@@ -45,6 +46,7 @@ func (s *Server) handleAlerts(res http.ResponseWriter, req *http.Request) {
 				fmt.Printf("Failed to serialize alert of type '%s' as JSON: %v\n", alert.Type, err)
 				continue
 			}
+			fmt.Printf(">> sending data: %s\n", data)
 			fmt.Fprintf(res, "data: %s\n\n", data)
 			res.(http.Flusher).Flush()
 		case <-req.Context().Done():
