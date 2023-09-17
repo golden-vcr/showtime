@@ -62,8 +62,19 @@ func (s *Server) resolveStatus() Status {
 		}
 	}
 
+	// TODO: Maybe don't commingle notification status and chat status?
+	if err := s.chat.GetStatus(); err != nil {
+		return Status{
+			IsReady: false,
+			Message: fmt.Sprintf(
+				"Twitch Event subscriptions are fully operational, but chat functionality is degraded. (Error: %s)",
+				err,
+			),
+		}
+	}
+
 	return Status{
 		IsReady: true,
-		Message: "All required Twitch Events subscriptions are enabled. The Golden VCR server will receive Twitch events!",
+		Message: "All required Twitch Event subscriptions are enabled, and chat features are working. The Golden VCR server is fully operational!",
 	}
 }

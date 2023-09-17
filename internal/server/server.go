@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"sync"
 
+	"github.com/golden-vcr/showtime/internal/chat"
 	"github.com/golden-vcr/showtime/internal/eventsub"
 )
 
@@ -11,6 +12,7 @@ type Server struct {
 	http.Handler
 
 	eventsub      *eventsub.Client
+	chat          *chat.Client
 	webhookSecret string
 
 	alertChannels          map[int]chan *Alert
@@ -18,9 +20,10 @@ type Server struct {
 	nextAlertChannelHandle int
 }
 
-func New(eventsubClient *eventsub.Client, webhookSecret string) *Server {
+func New(eventsubClient *eventsub.Client, chatClient *chat.Client, webhookSecret string) *Server {
 	s := &Server{
 		eventsub:      eventsubClient,
+		chat:          chatClient,
 		webhookSecret: webhookSecret,
 		alertChannels: make(map[int]chan *Alert),
 	}
