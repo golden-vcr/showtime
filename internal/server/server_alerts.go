@@ -28,6 +28,7 @@ func (s *Server) handleAlerts(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("content-type", "text/event-stream")
 	res.Header().Set("cache-control", "no-cache")
 	res.Header().Set("connection", "keep-alive")
+	res.WriteHeader(http.StatusOK)
 
 	// Open a channel to receive alert notifications as they happen
 	ch := make(chan *Alert, 32)
