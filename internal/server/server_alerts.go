@@ -35,11 +35,16 @@ func (s *Server) handleAlerts(res http.ResponseWriter, req *http.Request) {
 	ch := make(chan *Alert, 32)
 	handle := s.subscribeToAlerts(ch)
 
+	// Send an initial keepalive message: this ensures that Cloudfront will kick into
+	// action immediately without requiring special configuration rules
+	res.Write([]byte(":\n\n"))
+	res.(http.Flusher).Flush()
+
+	// Send all incoming alerts to the client for as long as the connection is open
 	fmt.Printf("Sending live alert notifications to %s...\n", req.RemoteAddr)
 	for {
 		select {
 		case <-time.After(30 * time.Second):
-			fmt.Printf(">> sending keepalive\n")
 			res.Write([]byte(":\n\n"))
 			res.(http.Flusher).Flush()
 		case alert := <-ch:
@@ -48,7 +53,6 @@ func (s *Server) handleAlerts(res http.ResponseWriter, req *http.Request) {
 				fmt.Printf("Failed to serialize alert of type '%s' as JSON: %v\n", alert.Type, err)
 				continue
 			}
-			fmt.Printf(">> sending data: %s\n", data)
 			fmt.Fprintf(res, "data: %s\n\n", data)
 			res.(http.Flusher).Flush()
 		case <-req.Context().Done():
