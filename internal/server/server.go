@@ -5,8 +5,6 @@ import (
 	"net/http"
 	"sync"
 
-	irc "github.com/gempir/go-twitch-irc/v4"
-
 	"github.com/golden-vcr/showtime/internal/chat"
 	"github.com/golden-vcr/showtime/internal/eventsub"
 )
@@ -17,25 +15,25 @@ type Server struct {
 	eventsub      *eventsub.Client
 	chat          *chat.Client
 	webhookSecret string
-	messagesChan  chan irc.PrivateMessage
+	eventsChan    chan *chat.Event
 
 	alertChannels          map[int]chan *Alert
 	alertChannelsMutex     sync.RWMutex
 	nextAlertChannelHandle int
 
-	chatChannels          map[int]chan *ChatLine
+	chatChannels          map[int]chan *chat.Event
 	chatChannelsMutex     sync.RWMutex
 	nextChatChannelHandle int
 }
 
-func New(ctx context.Context, eventsubClient *eventsub.Client, chatClient *chat.Client, webhookSecret string, messagesChan chan irc.PrivateMessage) *Server {
+func New(ctx context.Context, eventsubClient *eventsub.Client, chatClient *chat.Client, webhookSecret string, eventsChan chan *chat.Event) *Server {
 	s := &Server{
 		eventsub:      eventsubClient,
 		chat:          chatClient,
 		webhookSecret: webhookSecret,
-		messagesChan:  messagesChan,
+		eventsChan:    eventsChan,
 		alertChannels: make(map[int]chan *Alert),
-		chatChannels:  make(map[int]chan *ChatLine),
+		chatChannels:  make(map[int]chan *chat.Event),
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", s.handleStatus)
@@ -49,8 +47,8 @@ func New(ctx context.Context, eventsubClient *eventsub.Client, chatClient *chat.
 			select {
 			case <-ctx.Done():
 				break
-			case message := <-s.messagesChan:
-				s.handleMessage(&message)
+			case event := <-s.eventsChan:
+				s.broadcastChatEvent(event)
 			}
 		}
 	}()
@@ -84,7 +82,7 @@ func (s *Server) broadcastAlert(alert *Alert) {
 	}
 }
 
-func (s *Server) subscribeToChat(ch chan *ChatLine) int {
+func (s *Server) subscribeToChat(ch chan *chat.Event) int {
 	s.chatChannelsMutex.Lock()
 	defer s.chatChannelsMutex.Unlock()
 
@@ -101,11 +99,11 @@ func (s *Server) unsubscribeFromChat(handle int) {
 	delete(s.chatChannels, handle)
 }
 
-func (s *Server) broadcastChatLine(line *ChatLine) {
+func (s *Server) broadcastChatEvent(event *chat.Event) {
 	s.chatChannelsMutex.RLock()
 	defer s.chatChannelsMutex.RUnlock()
 
 	for _, ch := range s.chatChannels {
-		ch <- line
+		ch <- event
 	}
 }

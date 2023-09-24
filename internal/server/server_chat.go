@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/golden-vcr/showtime/internal/chat"
 )
 
 func (s *Server) handleChat(res http.ResponseWriter, req *http.Request) {
@@ -32,7 +34,7 @@ func (s *Server) handleChat(res http.ResponseWriter, req *http.Request) {
 	res.(http.Flusher).Flush()
 
 	// Open a channel to receive chat lines as they're emitted
-	ch := make(chan *ChatLine, 32)
+	ch := make(chan *chat.Event, 32)
 	handle := s.subscribeToChat(ch)
 
 	// Send an initial keepalive message: this ensures that Cloudfront will kick into
