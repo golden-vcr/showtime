@@ -43,7 +43,7 @@ type EmoteDetails struct {
 
 // Deletion is the payload for an event with type 'deletion'
 type Deletion struct {
-	MessageIDs []string `json:"message_ids"`
+	MessageIDs []string `json:"messageIds"`
 }
 
 // newMessageEvent constructs an Event with type 'message' given an IRC PRIVMSG, or nil
