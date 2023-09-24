@@ -13,15 +13,17 @@ import (
 var ErrNotYetConnected = errors.New("not yet connected")
 
 type Client struct {
-	channelName string
+	channelName  string
+	messagesChan chan irc.PrivateMessage
 
 	client         *irc.Client
 	lastConnectErr error
 }
 
-func NewClient(ctx context.Context, channelName string) (*Client, error) {
+func NewClient(ctx context.Context, channelName string, messagesChan chan irc.PrivateMessage) (*Client, error) {
 	c := &Client{
 		channelName:    channelName,
+		messagesChan:   messagesChan,
 		client:         irc.NewAnonymousClient(),
 		lastConnectErr: ErrNotYetConnected,
 	}
@@ -79,4 +81,5 @@ func (c *Client) handleMessage(message irc.PrivateMessage) {
 	for k, v := range message.Tags {
 		fmt.Printf("   t | %s: %s\n", k, v)
 	}
+	c.messagesChan <- message
 }

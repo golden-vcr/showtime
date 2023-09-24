@@ -10,6 +10,7 @@ import (
 	"syscall"
 
 	"github.com/codingconcepts/env"
+	irc "github.com/gempir/go-twitch-irc/v4"
 	"github.com/joho/godotenv"
 	"golang.org/x/sync/errgroup"
 
@@ -54,12 +55,13 @@ func main() {
 		log.Fatalf("error initializing Twitch EventSub API client: %v", err)
 	}
 
-	chatClient, err := chat.NewClient(ctx, config.TwitchChannelName)
+	messagesChan := make(chan irc.PrivateMessage, 32)
+	chatClient, err := chat.NewClient(ctx, config.TwitchChannelName, messagesChan)
 	if err != nil {
 		log.Fatalf("error initializing Twitch IRC chat client: %v", err)
 	}
+	srv := server.New(ctx, eventsubClient, chatClient, config.TwitchWebhookSecret, messagesChan)
 
-	srv := server.New(eventsubClient, chatClient, config.TwitchWebhookSecret)
 	addr := fmt.Sprintf("%s:%d", config.BindAddr, config.ListenPort)
 	server := &http.Server{Addr: addr, Handler: srv}
 
