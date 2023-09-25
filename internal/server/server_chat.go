@@ -35,7 +35,7 @@ func (s *Server) handleChat(res http.ResponseWriter, req *http.Request) {
 
 	// Open a channel to receive chat lines as they're emitted
 	ch := make(chan *chat.Event, 32)
-	handle := s.subscribeToChat(ch)
+	handle := s.chatEvents.register(ch)
 
 	// Send an initial keepalive message: this ensures that Cloudfront will kick into
 	// action immediately without requiring special configuration rules
@@ -59,7 +59,7 @@ func (s *Server) handleChat(res http.ResponseWriter, req *http.Request) {
 			res.(http.Flusher).Flush()
 		case <-req.Context().Done():
 			fmt.Printf("Stopping live chat notifications to %s.\n", req.RemoteAddr)
-			s.unsubscribeFromAlerts(handle)
+			s.chatEvents.unregister(handle)
 			return
 		}
 	}

@@ -81,6 +81,6 @@ func (s *Server) handlePostCallback(res http.ResponseWriter, req *http.Request) 
 		return
 	}
 	if alert != nil {
-		s.broadcastAlert(alert)
+		s.alerts.broadcast(alert)
 	}
 }

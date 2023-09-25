@@ -33,7 +33,7 @@ func (s *Server) handleAlerts(res http.ResponseWriter, req *http.Request) {
 
 	// Open a channel to receive alert notifications as they happen
 	ch := make(chan *Alert, 32)
-	handle := s.subscribeToAlerts(ch)
+	handle := s.alerts.register(ch)
 
 	// Send an initial keepalive message: this ensures that Cloudfront will kick into
 	// action immediately without requiring special configuration rules
@@ -57,7 +57,7 @@ func (s *Server) handleAlerts(res http.ResponseWriter, req *http.Request) {
 			res.(http.Flusher).Flush()
 		case <-req.Context().Done():
 			fmt.Printf("Stopping live alert notifications to %s.\n", req.RemoteAddr)
-			s.unsubscribeFromAlerts(handle)
+			s.alerts.unregister(handle)
 			return
 		}
 	}

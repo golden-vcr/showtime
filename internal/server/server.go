@@ -17,13 +17,8 @@ type Server struct {
 	webhookSecret string
 	eventsChan    chan *chat.Event
 
-	alertChannels          map[int]chan *Alert
-	alertChannelsMutex     sync.RWMutex
-	nextAlertChannelHandle int
-
-	chatChannels          map[int]chan *chat.Event
-	chatChannelsMutex     sync.RWMutex
-	nextChatChannelHandle int
+	alerts     *subcriberChannels[*Alert]
+	chatEvents *subcriberChannels[*chat.Event]
 }
 
 func New(ctx context.Context, eventsubClient *eventsub.Client, chatClient *chat.Client, webhookSecret string, eventsChan chan *chat.Event) *Server {
@@ -32,8 +27,12 @@ func New(ctx context.Context, eventsubClient *eventsub.Client, chatClient *chat.
 		chat:          chatClient,
 		webhookSecret: webhookSecret,
 		eventsChan:    eventsChan,
-		alertChannels: make(map[int]chan *Alert),
-		chatChannels:  make(map[int]chan *chat.Event),
+		alerts: &subcriberChannels[*Alert]{
+			chs: make(map[int]chan *Alert),
+		},
+		chatEvents: &subcriberChannels[*chat.Event]{
+			chs: make(map[int]chan *chat.Event),
+		},
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", s.handleStatus)
@@ -48,7 +47,7 @@ func New(ctx context.Context, eventsubClient *eventsub.Client, chatClient *chat.
 			case <-ctx.Done():
 				break
 			case event := <-s.eventsChan:
-				s.broadcastChatEvent(event)
+				s.chatEvents.broadcast(event)
 			}
 		}
 	}()
@@ -56,54 +55,34 @@ func New(ctx context.Context, eventsubClient *eventsub.Client, chatClient *chat.
 	return s
 }
 
-func (s *Server) subscribeToAlerts(ch chan *Alert) int {
-	s.alertChannelsMutex.Lock()
-	defer s.alertChannelsMutex.Unlock()
+type subcriberChannels[T any] struct {
+	chs        map[int]chan T
+	mu         sync.RWMutex
+	nextHandle int
+}
 
-	handle := s.nextAlertChannelHandle
-	s.nextAlertChannelHandle++
-	s.alertChannels[handle] = ch
+func (s *subcriberChannels[T]) register(ch chan T) int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	handle := s.nextHandle
+	s.chs[handle] = ch
+	s.nextHandle++
 	return handle
 }
 
-func (s *Server) unsubscribeFromAlerts(handle int) {
-	s.alertChannelsMutex.Lock()
-	defer s.alertChannelsMutex.Unlock()
+func (s *subcriberChannels[T]) unregister(handle int) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
-	delete(s.alertChannels, handle)
+	delete(s.chs, handle)
 }
 
-func (s *Server) broadcastAlert(alert *Alert) {
-	s.alertChannelsMutex.RLock()
-	defer s.alertChannelsMutex.RUnlock()
+func (s *subcriberChannels[T]) broadcast(message T) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 
-	for _, ch := range s.alertChannels {
-		ch <- alert
-	}
-}
-
-func (s *Server) subscribeToChat(ch chan *chat.Event) int {
-	s.chatChannelsMutex.Lock()
-	defer s.chatChannelsMutex.Unlock()
-
-	handle := s.nextChatChannelHandle
-	s.nextChatChannelHandle++
-	s.chatChannels[handle] = ch
-	return handle
-}
-
-func (s *Server) unsubscribeFromChat(handle int) {
-	s.chatChannelsMutex.Lock()
-	defer s.chatChannelsMutex.Unlock()
-
-	delete(s.chatChannels, handle)
-}
-
-func (s *Server) broadcastChatEvent(event *chat.Event) {
-	s.chatChannelsMutex.RLock()
-	defer s.chatChannelsMutex.RUnlock()
-
-	for _, ch := range s.chatChannels {
-		ch <- event
+	for _, ch := range s.chs {
+		ch <- message
 	}
 }
