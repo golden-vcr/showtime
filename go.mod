@@ -6,6 +6,7 @@ require (
 	github.com/codingconcepts/env v0.0.0-20200821220118-a8fbf8d84482
 	github.com/gempir/go-twitch-irc/v4 v4.0.0
 	github.com/joho/godotenv v1.5.1
+	github.com/lib/pq v1.10.9
 	github.com/nicklaw5/helix/v2 v2.25.0
 	github.com/pkg/browser v0.0.0-20210911075715-681adbf594b8
 	github.com/stretchr/testify v1.8.4

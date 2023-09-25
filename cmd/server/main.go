@@ -2,18 +2,22 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
 	"syscall"
 
 	"github.com/codingconcepts/env"
 	"github.com/joho/godotenv"
+	_ "github.com/lib/pq"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/golden-vcr/showtime"
+	"github.com/golden-vcr/showtime/gen/queries"
 	"github.com/golden-vcr/showtime/internal/chat"
 	"github.com/golden-vcr/showtime/internal/eventsub"
 	"github.com/golden-vcr/showtime/internal/server"
@@ -28,6 +32,13 @@ type Config struct {
 	TwitchClientSecret       string `env:"TWITCH_CLIENT_SECRET" required:"true"`
 	TwitchWebhookCallbackUrl string `env:"TWITCH_WEBHOOK_CALLBACK_URL" default:"https://goldenvcr.com/api/showtime/callback"`
 	TwitchWebhookSecret      string `env:"TWITCH_WEBHOOK_SECRET" required:"true"`
+
+	DatabaseHost     string `env:"PGHOST" required:"true"`
+	DatabasePort     int    `env:"PGPORT" required:"true"`
+	DatabaseName     string `env:"PGDATABASE" required:"true"`
+	DatabaseUser     string `env:"PGUSER" required:"true"`
+	DatabasePassword string `env:"PGPASSWORD" required:"true"`
+	DatabaseSslMode  string `env:"PGSSLMODE"`
 }
 
 func main() {
@@ -42,6 +53,24 @@ func main() {
 
 	ctx, close := signal.NotifyContext(context.Background(), os.Interrupt, os.Kill, syscall.SIGTERM)
 	defer close()
+
+	connectionString := formatConnectionString(
+		config.DatabaseHost,
+		config.DatabasePort,
+		config.DatabaseName,
+		config.DatabaseUser,
+		config.DatabasePassword,
+		config.DatabaseSslMode,
+	)
+	db, err := sql.Open("postgres", connectionString)
+	if err != nil {
+		log.Fatalf("error opening database: %v", err)
+	}
+	defer db.Close()
+	if err := db.Ping(); err != nil {
+		log.Fatalf("error connecting to database: %v", err)
+	}
+	q := queries.New(db)
 
 	eventsubClient, err := eventsub.NewClient(
 		config.TwitchChannelName,
@@ -59,7 +88,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("error initializing Twitch IRC chat client: %v", err)
 	}
-	srv := server.New(ctx, eventsubClient, chatClient, config.TwitchWebhookSecret, eventsChan)
+	srv := server.New(ctx, q, eventsubClient, chatClient, config.TwitchWebhookSecret, eventsChan)
 
 	addr := fmt.Sprintf("%s:%d", config.BindAddr, config.ListenPort)
 	server := &http.Server{Addr: addr, Handler: srv}
@@ -80,4 +109,13 @@ func main() {
 	} else {
 		log.Fatalf("error running server: %v", err)
 	}
+}
+
+func formatConnectionString(host string, port int, dbname string, user string, password string, sslmode string) string {
+	urlencodedPassword := url.QueryEscape(password)
+	s := fmt.Sprintf("postgres://%s:%s@%s:%d/%s", user, urlencodedPassword, host, port, dbname)
+	if sslmode != "" {
+		s += fmt.Sprintf("?sslmode=%s", sslmode)
+	}
+	return s
 }

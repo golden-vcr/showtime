@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"sync"
 
+	"github.com/golden-vcr/showtime/gen/queries"
 	"github.com/golden-vcr/showtime/internal/chat"
 	"github.com/golden-vcr/showtime/internal/eventsub"
 )
@@ -12,6 +13,7 @@ import (
 type Server struct {
 	http.Handler
 
+	q             *queries.Queries
 	eventsub      *eventsub.Client
 	chat          *chat.Client
 	webhookSecret string
@@ -21,8 +23,9 @@ type Server struct {
 	chatEvents *subcriberChannels[*chat.Event]
 }
 
-func New(ctx context.Context, eventsubClient *eventsub.Client, chatClient *chat.Client, webhookSecret string, eventsChan chan *chat.Event) *Server {
+func New(ctx context.Context, q *queries.Queries, eventsubClient *eventsub.Client, chatClient *chat.Client, webhookSecret string, eventsChan chan *chat.Event) *Server {
 	s := &Server{
+		q:             q,
 		eventsub:      eventsubClient,
 		chat:          chatClient,
 		webhookSecret: webhookSecret,
@@ -39,6 +42,7 @@ func New(ctx context.Context, eventsubClient *eventsub.Client, chatClient *chat.
 	mux.HandleFunc("/callback", s.handlePostCallback)
 	mux.HandleFunc("/alerts", s.handleAlerts)
 	mux.HandleFunc("/chat", s.handleChat)
+	mux.HandleFunc("/view", s.handleView)
 	s.Handler = mux
 
 	go func() {

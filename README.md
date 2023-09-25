@@ -14,6 +14,8 @@ Install [Go 1.21](https://go.dev/doc/install). If successful, you should be able
 go version go1.21.0 windows/amd64
 ```
 
+Ensure that you have [Docker](https://www.docker.com/) installed, then 
+
 ## Initial setup
 
 Create a file in the root of this repo called `.env` that contains the environment
@@ -22,6 +24,35 @@ variables required in [`main.go`](./cmd/server/main.go). If you have the
 simply open a shell there and run:
 
 - `terraform output -raw twitch_api_env > ../showtime/.env`
+- `./local-db.sh env >> ../showtime/.env`
+
+### Running the database
+
+This API stores persistent data in a PostgreSQL database. When running in a live
+environment, each API has its own database, and connection details are configured from
+Terraform secrets via .env files.
+
+For local development, we run a self-contained postgres database in Docker, and all
+server-side applications share the same set of throwaway credentials.
+
+We use a script in the [`terraform`](https://github.com/golden-vcr/terraform) repo,
+called `./local-db.sh`, to manage this local database. To start up a fresh database and
+apply migrations, run:
+
+- _(from `terraform`:)_ `./local-db.sh up`
+- _(from `showtime`:)_ `./db-migrate.sh`
+
+If you need to blow away your local database and start over, just run
+`./local-db.sh down` and repeat these steps.
+
+### Generating database queries
+
+If you modify the SQL code in [`db/queries`](./db/queries/), you'll need to generate
+new Go code to [`gen/queries`](./gen/queries/). To do so, simply run:
+
+- `./db-generate-queries.sh`
+
+### Creating Twitch webhooks
 
 The Golden VCR Twitch App (identified by the Client ID etc. configured in Terraform) is
 intended for use with a single Twitch channel: [GoldenVCR](https://www.twitch.tv/goldenvcr).
@@ -58,6 +89,21 @@ with the requisite scopes, via one of the OAuth flows described here:
 When you run the `init` program, it will open a browser window and prompt you for
 access. The code in [`authflow.go`](./internal/eventsub/authflow.go) implements the
 client-side logic for this auth flow.
+
+## Updating state
+
+There is currently no API for performing administrative tasks: instead, you need to run
+an `admin` command that's implemented in [`cmd/admin/main.go`](./cmd/admin/main.go).
+
+To change the currently selected tape:
+
+- `go run cmd/admin/main.go set-tape <tape-id>`
+
+To clear the current tape:
+
+- `go run cmd/admin/main.go clear-tape`
+
+Running without arguments will print the currently selected tape.
 
 ## Running
 
