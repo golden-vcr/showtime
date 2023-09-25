@@ -19,6 +19,9 @@ function url_encode() {
 if [ -f .env ]; then
     source .env
 fi
+if [ -f bin/.env ]; then
+    source bin/.env
+fi
 require_env 'PGHOST' "$PGHOST"
 require_env 'PGPORT' "$PGPORT"
 require_env 'PGDATABASE' "$PGDATABASE"
