@@ -28,9 +28,10 @@ require_env 'PGDATABASE' "$PGDATABASE"
 require_env 'PGUSER' "$PGUSER"
 require_env 'PGPASSWORD' "$PGPASSWORD"
 
-POSTGRES_URI="postgres://$PGUSER:$(url_encode "$PGPASSWORD")@$PGHOST:$PGPORT/$PGDATABASE"
+SCHEMA_NAME=$(basename $(pwd))
+POSTGRES_URI="postgres://$PGUSER:$(url_encode "$PGPASSWORD")@$PGHOST:$PGPORT/$PGDATABASE?search_path=public&x-migrations-table=${SCHEMA_NAME}_migrations"
 if [ "$PGSSLMODE" != "" ]; then
-    POSTGRES_URI="$POSTGRES_URI?sslmode=$PGSSLMODE"
+    POSTGRES_URI="$POSTGRES_URI&sslmode=$PGSSLMODE"
 fi
 
 MIGRATE_COMMAND="$@"
