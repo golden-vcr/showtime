@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"sync"
 
@@ -15,23 +16,25 @@ import (
 type Server struct {
 	http.Handler
 
-	q             *queries.Queries
-	eventsub      *eventsub.Client
-	chat          *chat.Client
-	webhookSecret string
-	eventsChan    chan *chat.Event
+	extensionClientId string
+	webhookSecret     string
+	q                 *queries.Queries
+	eventsub          *eventsub.Client
+	chat              *chat.Client
+	eventsChan        chan *chat.Event
 
 	alerts     *subcriberChannels[*Alert]
 	chatEvents *subcriberChannels[*chat.Event]
 }
 
-func New(ctx context.Context, q *queries.Queries, eventsubClient *eventsub.Client, chatClient *chat.Client, webhookSecret string, eventsChan chan *chat.Event) *Server {
+func New(ctx context.Context, extensionClientId string, webhookSecret string, q *queries.Queries, eventsubClient *eventsub.Client, chatClient *chat.Client, eventsChan chan *chat.Event) *Server {
 	s := &Server{
-		q:             q,
-		eventsub:      eventsubClient,
-		chat:          chatClient,
-		webhookSecret: webhookSecret,
-		eventsChan:    eventsChan,
+		extensionClientId: extensionClientId,
+		webhookSecret:     webhookSecret,
+		q:                 q,
+		eventsub:          eventsubClient,
+		chat:              chatClient,
+		eventsChan:        eventsChan,
 		alerts: &subcriberChannels[*Alert]{
 			chs: make(map[int]chan *Alert),
 		},
@@ -41,7 +44,10 @@ func New(ctx context.Context, q *queries.Queries, eventsubClient *eventsub.Clien
 	}
 
 	withCors := cors.New(cors.Options{
-		AllowedOrigins: []string{"https://localhost:8080"},
+		AllowedOrigins: []string{
+			"https://localhost:8080",
+			fmt.Sprintf("https://%s.ext-twitch.tv", extensionClientId),
+		},
 		AllowedMethods: []string{http.MethodGet},
 	})
 

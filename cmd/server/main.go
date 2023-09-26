@@ -30,6 +30,7 @@ type Config struct {
 	TwitchChannelName        string `env:"TWITCH_CHANNEL_NAME" required:"true"`
 	TwitchClientId           string `env:"TWITCH_CLIENT_ID" required:"true"`
 	TwitchClientSecret       string `env:"TWITCH_CLIENT_SECRET" required:"true"`
+	TwitchExtensionClientId  string `env:"TWITCH_EXTENSION_CLIENT_ID" required:"true"`
 	TwitchWebhookCallbackUrl string `env:"TWITCH_WEBHOOK_CALLBACK_URL" default:"https://goldenvcr.com/api/showtime/callback"`
 	TwitchWebhookSecret      string `env:"TWITCH_WEBHOOK_SECRET" required:"true"`
 
@@ -88,7 +89,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("error initializing Twitch IRC chat client: %v", err)
 	}
-	srv := server.New(ctx, q, eventsubClient, chatClient, config.TwitchWebhookSecret, eventsChan)
+	srv := server.New(ctx, config.TwitchExtensionClientId, config.TwitchWebhookSecret, q, eventsubClient, chatClient, eventsChan)
 
 	addr := fmt.Sprintf("%s:%d", config.BindAddr, config.ListenPort)
 	server := &http.Server{Addr: addr, Handler: srv}
