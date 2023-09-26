@@ -14,8 +14,6 @@ Install [Go 1.21](https://go.dev/doc/install). If successful, you should be able
 go version go1.21.0 windows/amd64
 ```
 
-Ensure that you have [Docker](https://www.docker.com/) installed, then 
-
 ## Initial setup
 
 Create a file in the root of this repo called `.env` that contains the environment
