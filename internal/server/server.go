@@ -2,8 +2,11 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"sync"
+
+	"github.com/rs/cors"
 
 	"github.com/golden-vcr/showtime/gen/queries"
 	"github.com/golden-vcr/showtime/internal/chat"
@@ -37,12 +40,18 @@ func New(ctx context.Context, q *queries.Queries, eventsubClient *eventsub.Clien
 			chs: make(map[int]chan *chat.Event),
 		},
 	}
+
+	withCors := cors.New(cors.Options{
+		AllowedOrigins: []string{"https://localhost:8080"}
+		AllowedMethods: []string{http.MethodGet},
+	})
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", s.handleStatus)
 	mux.HandleFunc("/callback", s.handlePostCallback)
 	mux.HandleFunc("/alerts", s.handleAlerts)
 	mux.HandleFunc("/chat", s.handleChat)
-	mux.HandleFunc("/view", s.handleView)
+	mux.HandleFunc("/view", withCors.Handler(s.handleView))
 	s.Handler = mux
 
 	go func() {

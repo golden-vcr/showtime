@@ -9,6 +9,7 @@ require (
 	github.com/lib/pq v1.10.9
 	github.com/nicklaw5/helix/v2 v2.25.0
 	github.com/pkg/browser v0.0.0-20210911075715-681adbf594b8
+	github.com/rs/cors v1.10.0
 	github.com/stretchr/testify v1.8.4
 	golang.org/x/sync v0.3.0
 )

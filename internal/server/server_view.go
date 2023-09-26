@@ -8,21 +8,6 @@ import (
 )
 
 func (s *Server) handleView(res http.ResponseWriter, req *http.Request) {
-	// Handle a preflight OPTIONS request: we want our Twitch extension (hosted at
-	// 'https://<client-id>.twitch-ext.tv') to be able to use this endpoint, so we need
-	// to send back the appropriate CORS headers to instruct the browser that it's safe
-	// for a page served by that origin to send asynchronous requests to this API
-	if req.Method == http.MethodOptions {
-		// TEMP: Just dump headers and return 405
-		fmt.Printf("OPTIONS request!\n")
-		for k, v := range req.Header {
-			fmt.Printf("- %s: %s\n", k, v)
-		}
-		fmt.Printf("Preflight handler NYI; returning 405\n")
-		http.Error(res, "unsupported method", http.StatusMethodNotAllowed)
-		return
-	}
-
 	// Only handle GET requests
 	if req.Method != http.MethodGet {
 		fmt.Printf("Got view request with unsupported method %s\n", req.Method)
