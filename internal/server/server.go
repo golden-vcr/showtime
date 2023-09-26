@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"sync"
 
@@ -42,7 +41,7 @@ func New(ctx context.Context, q *queries.Queries, eventsubClient *eventsub.Clien
 	}
 
 	withCors := cors.New(cors.Options{
-		AllowedOrigins: []string{"https://localhost:8080"}
+		AllowedOrigins: []string{"https://localhost:8080"},
 		AllowedMethods: []string{http.MethodGet},
 	})
 
@@ -51,8 +50,8 @@ func New(ctx context.Context, q *queries.Queries, eventsubClient *eventsub.Clien
 	mux.HandleFunc("/callback", s.handlePostCallback)
 	mux.HandleFunc("/alerts", s.handleAlerts)
 	mux.HandleFunc("/chat", s.handleChat)
-	mux.HandleFunc("/view", withCors.Handler(s.handleView))
-	s.Handler = mux
+	mux.HandleFunc("/view", s.handleView)
+	s.Handler = withCors.Handler(mux)
 
 	go func() {
 		for {
