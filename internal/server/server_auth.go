@@ -18,7 +18,7 @@ func (s *Server) handleAuthLogin(res http.ResponseWriter, req *http.Request) {
 	// Require a Twitch authorization code in the URL params
 	code := req.URL.Query().Get("code")
 	if code == "" {
-		fmt.Printf("Got login request with missing 'code' parameter")
+		fmt.Printf("Got login request with missing 'code' parameter\n")
 		fmt.Printf("- URL: %+v\n", req.URL)
 		fmt.Printf("- RawQuery: %+v\n", req.URL.RawQuery)
 		http.Error(res, "'code' URL parameter is required", http.StatusBadRequest)
@@ -63,7 +63,7 @@ func (s *Server) handleAuthRefresh(res http.ResponseWriter, req *http.Request) {
 	// Require a Twitch refresh token in the Authorization header
 	refreshToken := parseAuthorizationHeader(req.Header.Get("authorization"))
 	if refreshToken == "" {
-		fmt.Printf("Got refresh request with missing authorization header")
+		fmt.Printf("Got refresh request with missing authorization header\n")
 		http.Error(res, "Twitch refresh token must be supplied in Authorization header", http.StatusBadRequest)
 		return
 	}
@@ -106,7 +106,7 @@ func (s *Server) handleAuthLogout(res http.ResponseWriter, req *http.Request) {
 	// Require a Twitch user access token in the Authorization header
 	userAccessToken := parseAuthorizationHeader(req.Header.Get("authorization"))
 	if userAccessToken == "" {
-		fmt.Printf("Got logout request with missing authorization header")
+		fmt.Printf("Got logout request with missing authorization header\n")
 		http.Error(res, "Twitch user access token must be supplied in Authorization header", http.StatusBadRequest)
 		return
 	}
