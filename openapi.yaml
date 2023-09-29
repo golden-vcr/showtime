@@ -1,0 +1,215 @@
+openapi: 3.0.3
+info:
+  version: 0.1.0
+  title: showtime
+  description: |-
+    The **showtime** API handles events from Twitch and provides features used during
+    live streams. More broadly, it's the part of the Golden VCR backend that's
+    responsible for interop with the Twitch API (as well as Twitch chat over IRC and
+    Twitch EventSub notifications).
+externalDocs:
+  description: 'github.com/golden-vcr/showtime'
+  url: https://github.com/golden-vcr/showtime
+servers:
+  - url: https://goldenvcr.com/api/showtime
+tags:
+  - name: status
+    description: |-
+      General status endpoints
+  - name: events
+    description: |-
+      Webhooks called by Twitch EventSub subscriptions
+    externalDocs:
+      description: Twitch EventSub API
+      url: https://dev.twitch.tv/docs/eventsub/
+  - name: streams
+    description: |-
+      SSE endpoints that provide real-time information using during streams
+paths:
+  /:
+    get:
+      tags:
+        - status
+      summary: |-
+        Returns basic status information about the Showtime API
+      operationId: getStatus
+      responses:
+        '200':
+          description: |-
+            API status was successfully evaluated.
+          content:
+            application/json:
+              examples:
+                ready:
+                  summary: The showtime API is fully ready
+                  value:
+                    isReady: true
+                    message: >-
+                      All required Twitch Event subscriptions are enabled, and chat
+                      features are working. The Golden VCR server is fully operational!
+                chatDegraded:
+                  summary: Events will function, but chat features are degraded
+                  value:
+                    isReady: false
+                    message: >-
+                      Twitch Event subscriptions are fully operational, but chat
+                      functionality is degraded. (Error: Failed to establish initial
+                      connection to Twitch chat: something went wrong)
+                eventsNotInitialized:
+                  summary: Required event subscriptions are not active
+                  value:
+                    isReady: false
+                    message: >-
+                      One or more required Twitch event subscriptions do not yet exist.
+                      The Golden VCR server may not be receiving all required data from
+                      Twitch.
+                twitchOutage:
+                  summary: The Twitch API is unresponsive
+                  value:
+                    isReady: false
+                    message: >-
+                      Unable to retrieve subscription details from the Twitch API. This
+                      may be due to a disruption in service from Twitch itself, or there
+                      may be a problem with the Golden VCR server. (Error: something
+                      went wrong)
+  /callback:
+    post:
+      tags:
+        - events
+      summary: |-
+        Called by Twitch to initialize an EventSub subscription or notify us of an event
+        we're subscribed to
+      operationId: postCallback
+      requestBody:
+        content:
+          application/json:
+            examples:
+              onregister:
+                summary: Initial challenge when subscription is first registered
+                value:
+                  subscription:
+                    id: '00000000-0000-0000-0000-000000000000'
+                    type: channel.follow
+                    version: '2'
+                    status: enabled
+                    condition:
+                      broadcaster_user_id: '953753877'
+                      moderator_user_id: '953753877'
+                    transport:
+                      method: webhook
+                      example: https://goldenvcr.com/api/showtime/callback
+                    created_at: '2023-01-01T12:15:00.77777777Z'
+                    cost: 0
+                  challenge: '9zMXrpRAtLsfCqcUxcgH2bdtCNirhr9X'
+              onevent:
+                summary: Event notification for an active subscription
+                value:
+                  subscription:
+                    id: '00000000-0000-0000-0000-000000000000'
+                    type: channel.follow
+                    version: '2'
+                    status: enabled
+                    condition:
+                      broadcaster_user_id: '953753877'
+                      moderator_user_id: '953753877'
+                    transport:
+                      method: webhook
+                      example: https://goldenvcr.com/api/showtime/callback
+                    created_at: '2023-01-01T12:15:00.77777777Z'
+                    cost: 0
+                  event:
+                    user_id: '90790024'
+                    user_login: wasabimilkshake
+                    user_name: wasabimilkshake
+                    broadcaster_user_id: '953753877'
+                    broadcaster_user_login: goldenvcr
+                    broadcaster_user_name: GoldenVCR
+                    followed_at: '2023-09-27T19:23:05.84782554Z'
+        required: true
+      responses:
+        '200':
+          description: |-
+            The event was accepted. For an initial challenge on register, the response
+            body will contain the literal `challenge` value from the request payload;
+            otherwise no content.
+        '400':
+          description: |-
+            Signature verification failed: the server could not verify that the request
+            was initiated by Twitch.
+  /alerts:
+    get:
+      tags:
+        - streams
+      summary: |-
+        Provides a client with real-time notifications of alerts (follow, raid, etc.)
+      operationId: getAlerts
+      responses:
+        '200':
+          description: |-
+            The HTTP connection opened for this request will be kept open, and the
+            server will write JSON-serialized `Alert` objects into the response body
+            until the connection is closed. Example of responses on the wire:
+
+            ```
+            data: {"type":"follow","data":{"username":"wasabimilkshake"}}
+
+            data: {"type":"raid","data":{"username":"wasabimilkshake","numViewers":15}}
+            
+            :
+
+            ```
+          content:
+            text/event-stream:
+              examples:
+                follow:
+                  summary: A new user has followed the channel
+                  value:
+                    type: follow
+                    data:
+                      username: wasabimilkshake
+                raid:
+                  summary: Another broadcaster is raiding the channel
+                  value:
+                    type: raid
+                    data:
+                      username: wasabimilkshake
+                      numViewers: 15
+  /chat:
+    get:
+      tags:
+        - streams
+      summary: |-
+        Provides a client with real-time chat messages
+      operationId: getChat
+      responses:
+        '200':
+          description: |-
+            The HTTP connection opened for this request will be kept open, and the
+            server will write JSON-serialized `chat.Event` objects into the response
+            body until the connection is closed.
+          content:
+            text/event-stream:
+              examples:
+                message:
+                  summary: A user has sent a message in the chat
+                  value:
+                    type: message
+                    message:
+                      id: 4cbc3d2a-4606-43d0-a9f3-2788fe50d352
+                      username: wasabimilkshake
+                      color: '#00FF7F'
+                      text: 'hello, I have $$5 and this is an emote: $0'
+                      emotes:
+                        - name: wasabi22Denton
+                          url: https://static-cdn.jtvnw.net/emoticons/v2/emotesv2_9d94d65bbef64763b7c09401156ea0bc/default/dark/1.0
+                deletion:
+                  summary: One or more recent messages should be deleted
+                  value:
+                    type: deletion
+                    deletion:
+                      messageIds:
+                        - 4cbc3d2a-4606-43d0-a9f3-2788fe50d352
+                clear:
+                  summary: The entire chat log should be cleared
+                  value:
+                    type: clear
