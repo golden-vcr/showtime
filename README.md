@@ -5,6 +5,8 @@ uses the Twitch API to register [event subscriptions](https://dev.twitch.tv/docs
 so that Twitch will call webhook handlers via `POST /callback` whenever stream-related
 events occur.
 
+- **OpenAPI specification:** https://golden-vcr.github.io/showtime/
+
 ## Prerequisites
 
 Install [Go 1.21](https://go.dev/doc/install). If successful, you should be able to run:
