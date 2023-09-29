@@ -53,6 +53,9 @@ func New(ctx context.Context, extensionClientId string, webhookSecret string, q 
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", s.handleStatus)
+	mux.HandleFunc("/auth/login", s.handleAuthLogin)
+	mux.HandleFunc("/auth/refresh", s.handleAuthRefresh)
+	mux.HandleFunc("/auth/logout", s.handleAuthLogout)
 	mux.HandleFunc("/callback", s.handlePostCallback)
 	mux.HandleFunc("/alerts", s.handleAlerts)
 	mux.HandleFunc("/chat", s.handleChat)

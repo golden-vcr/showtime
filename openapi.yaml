@@ -2,11 +2,15 @@ openapi: 3.0.3
 info:
   version: 0.1.0
   title: showtime
-  description: |-
+  description: |
     The **showtime** API handles events from Twitch and provides features used during
     live streams. More broadly, it's the part of the Golden VCR backend that's
     responsible for interop with the Twitch API (as well as Twitch chat over IRC and
     Twitch EventSub notifications).
+
+    Since we use Twitch user accounts as our first-class representation of user
+    identity within the Golden VCR backend, showtime also handles authentication via the
+    Twitch API.
 externalDocs:
   description: 'github.com/golden-vcr/showtime'
   url: https://github.com/golden-vcr/showtime
@@ -16,6 +20,9 @@ tags:
   - name: status
     description: |-
       General status endpoints
+  - name: auth
+    description: |-
+      Endpoints for handling user authentication via Twitch, used by the Golden VCR webapp
   - name: events
     description: |-
       Webhooks called by Twitch EventSub subscriptions
@@ -72,6 +79,110 @@ paths:
                       may be due to a disruption in service from Twitch itself, or there
                       may be a problem with the Golden VCR server. (Error: something
                       went wrong)
+  /auth/login:
+    post:
+      tags:
+        - auth
+      summary: |-
+        Exchanges a Twitch authorization code for a user access token
+      operationId: postAuthLogin
+      parameters:
+        - in: query
+          name: code
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: |-
+            Login was successful: we have authenticated the user via Twitch and obtained
+            a user access token with the required scopes. The app may switch to a
+            logged-in state and begin authorizing API requests with the provided access
+            token.
+          content:
+            application/json:
+              examples:
+                loggedIn:
+                  $ref: '#/components/examples/authStateLoggedIn'
+        '400':
+          description: |-
+            Request was invalid due to missing `code` query parameter (should be set to
+            an authorization code received from Twitch via the OAuth authorization code
+            grant flow.
+        '401':
+          description: |-
+            Login failed: the user should remain logged out, and the provided error may
+            be displayed to the user for context.
+          content:
+            application/json:
+              examples:
+                loggedOutWithError:
+                  $ref: '#/components/examples/authStateLoggedOutWithError'
+  /auth/refresh:
+    post:
+      tags:
+        - auth
+      summary: |-
+        Uses a Twitch refresh token to obtain a new user access token
+      operationId: postAuthRefresh
+      responses:
+        '200':
+          description: |-
+            Refresh was successful: the user remains authenticated via Twitch, and we
+            have obtained a new access token which the app should begin using to
+            authorize API requests.
+          content:
+            application/json:
+              examples:
+                loggedIn:
+                  $ref: '#/components/examples/authStateLoggedIn'
+        '400':
+          description: |-
+            Request was invalid due to missing `Authorization` header (should contain a
+            Twitch refresh token).
+        '401':
+          description: |-
+            Refresh failed: the app should revert to a logged-out state, and all stored
+            user information should be purged.
+          content:
+            application/json:
+              examples:
+                loggedOutWithError:
+                  $ref: '#/components/examples/authStateLoggedOutWithError'
+      security:
+        - twitchRefreshToken: []
+  /auth/logout:
+    post:
+      tags:
+        - auth
+      summary: |-
+        Revokes a Twitch user access token
+      operationId: postAuthLogout
+      responses:
+        '200':
+          description: |-
+            The provided user access token was successfully revoked: the app should
+            clear stored credentials and revert to a logged-out state.
+          content:
+            application/json:
+              examples:
+                loggedOut:
+                  $ref: '#/components/examples/authStateLoggedOut'
+        '400':
+          description: |-
+            Request was invalid due to missing `Authorization` header (should contain a
+            Twitch user access token).
+        '401':
+          description: |-
+            The provided token could not be validated. Regardless, the app should clear
+            stored credentials and revert to a logged-out state.
+          content:
+            application/json:
+              examples:
+                loggedOutWithError:
+                  $ref: '#/components/examples/authStateLoggedOutWithError'
+      security:
+        - twitchUserAccessToken: []
   /callback:
     post:
       tags:
@@ -231,3 +342,35 @@ paths:
                   summary: The entire chat log should be cleared
                   value:
                     type: clear
+components:
+  examples:
+    authStateLoggedIn:
+      summary: User was successfully authenticated via Twitch
+      value:
+        loggedIn: true
+        user:
+          id: '90790024'
+          login: wasabimilkshake
+          displayName: wasabimilkshake
+        tokens:
+          accessToken: twitch-issued-user-access-token
+          refreshToken: twitch-issued-refresh-token
+          scopes:
+            - 'user:read:follows'
+            - 'user:read:subscriptions'
+    authStateLoggedOut:
+      summary: User is logged out
+      value:
+        loggedIn: false
+    authStateLoggedOutWithError:
+      summary: An error occurred during authentication
+      value:
+        loggedIn: false
+        error: Something went wrong
+  securitySchemes:
+    twitchUserAccessToken:
+      type: http
+      scheme: bearer
+    twitchRefreshToken:
+      type: http
+      scheme: bearer
