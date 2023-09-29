@@ -19,6 +19,8 @@ func (s *Server) handleAuthLogin(res http.ResponseWriter, req *http.Request) {
 	code := req.URL.Query().Get("code")
 	if code == "" {
 		fmt.Printf("Got login request with missing 'code' parameter")
+		fmt.Printf("- URL: %+v\n", req.URL)
+		fmt.Printf("- RawQuery: %+v\n", req.URL.RawQuery)
 		http.Error(res, "'code' URL parameter is required", http.StatusBadRequest)
 		return
 	}
