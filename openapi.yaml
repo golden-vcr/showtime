@@ -180,6 +180,24 @@ paths:
         - streams
       summary: |-
         Provides a client with real-time chat messages
+      description: |
+        Chat events carry a `type` value that indicates whether they're a message, a
+        control event (such a deleting or clearing messages), etc.
+
+        For message events, the message text uses a custom format to encode emotes:
+
+        - Any occurrence of `$$` represents a literal dollar sign and should be rendered
+          as `$`
+
+        - Any occurrence of `$i` (where `i` is an integer) is a reference to an emote
+          from the event's `emotes` array. If `emotes[i].url` is a valid URL, then the
+          `$i` placeholder should be replaced and rendered as an image element with that
+          URL as its source. If `emotes[i].url` is not valid, then a sentinel value
+          indicating `emotes[i].name` should be rendered instead.
+
+        In the example message event given below, the chat line should be rendered as:
+
+        - <font color="#00FF7F"><b>wasabimilkshake:</b></font> hello, I have $5 and this is an emote: <img alt="wasabi22Denton" src="https://static-cdn.jtvnw.net/emoticons/v2/emotesv2_9d94d65bbef64763b7c09401156ea0bc/default/dark/1.0" />
       operationId: getChat
       responses:
         '200':
