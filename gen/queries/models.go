@@ -5,6 +5,7 @@
 package queries
 
 import (
+	"database/sql"
 	"time"
 )
 
@@ -14,4 +15,18 @@ type ShowtimeTapeChange struct {
 	CreatedAt time.Time
 	// ID of the tape that was set as current (if non-empty), or empty string to indicate that the current tape was cleared.
 	TapeID string
+}
+
+// Details about a user who has interacted with Golden VCR at some point, either directly via goldenvcr.com or via Twitch.
+type ShowtimeViewer struct {
+	// Text-formatted integer identifying this user in the Twitch API.
+	TwitchUserID string
+	// Last known username by which this user was known, formatted for display.
+	TwitchDisplayName string
+	// Timestamp when the user first logged in at goldenvcr.com, if if ever.
+	FirstLoggedInAt sql.NullTime
+	// Timestamp when the user most recently logged in at goldenvcr.com, if ever.
+	LastLoggedInAt sql.NullTime
+	// Timestamp when the user first followed GoldenVCR on twitch, if ever.
+	FirstFollowedAt sql.NullTime
 }

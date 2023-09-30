@@ -2,11 +2,13 @@ package server
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 
+	"github.com/golden-vcr/showtime/gen/queries"
 	"github.com/nicklaw5/helix/v2"
 )
 
@@ -73,6 +75,19 @@ func (s *Server) handlePostCallback(res http.ResponseWriter, req *http.Request) 
 	fmt.Printf("- %s\n", string(payload.Event))
 	fmt.Printf("- %v\n", ev)
 	res.WriteHeader(http.StatusOK)
+
+	// If this is a new follow, upsert into the viewer table to record that this user
+	// follows us now
+	// TODO: Make event->alert logic happen outside of the request handler?
+	if ev.Type == helix.EventSubTypeChannelFollow {
+		err := s.q.RecordViewerFollow(context.Background(), queries.RecordViewerFollowParams{
+			TwitchUserID:      ev.ChannelFollow.UserId,
+			TwitchDisplayName: ev.ChannelFollow.BroadcasterUserName,
+		})
+		if err != nil {
+			fmt.Printf("Failed to record viewer follow: %v\n", err)
+		}
+	}
 
 	// If this event should produce an alert, fan that alert out to all SSE connections
 	alert, err := ev.ToAlert()

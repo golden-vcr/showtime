@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/golden-vcr/showtime/gen/queries"
 	"github.com/nicklaw5/helix/v2"
 )
 
@@ -62,6 +63,18 @@ func (s *Server) handleAuthLogin(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	// Record the fact that the user has logged in
+	err = s.q.RecordViewerLogin(req.Context(), queries.RecordViewerLoginParams{
+		TwitchUserID:      twitchUser.ID,
+		TwitchDisplayName: twitchUser.DisplayName,
+	})
+	if err != nil {
+		fmt.Printf("failed to record user login: %v\n", err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	respondWithLoggedIn(res, twitchUser, &tokenResponse.Data)
 }
 
@@ -111,6 +124,20 @@ func (s *Server) handleAuthRefresh(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	// Record the fact that the user has logged in: doing this on refresh ensures that
+	// we'll periodically update our viewer.last_logged_in_at timestamp in response to
+	// normal website usage
+	err = s.q.RecordViewerLogin(req.Context(), queries.RecordViewerLoginParams{
+		TwitchUserID:      twitchUser.ID,
+		TwitchDisplayName: twitchUser.DisplayName,
+	})
+	if err != nil {
+		fmt.Printf("failed to record user login: %v\n", err)
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	respondWithLoggedIn(res, twitchUser, &refreshResponse.Data)
 }
 
