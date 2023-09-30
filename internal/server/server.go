@@ -16,25 +16,29 @@ import (
 type Server struct {
 	http.Handler
 
-	extensionClientId string
-	webhookSecret     string
-	q                 *queries.Queries
-	eventsub          *eventsub.Client
-	chat              *chat.Client
-	eventsChan        chan *chat.Event
+	twitchAppClientId     string
+	twitchAppClientSecret string
+	extensionClientId     string
+	webhookSecret         string
+	q                     *queries.Queries
+	eventsub              *eventsub.Client
+	chat                  *chat.Client
+	eventsChan            chan *chat.Event
 
 	alerts     *subcriberChannels[*Alert]
 	chatEvents *subcriberChannels[*chat.Event]
 }
 
-func New(ctx context.Context, extensionClientId string, webhookSecret string, q *queries.Queries, eventsubClient *eventsub.Client, chatClient *chat.Client, eventsChan chan *chat.Event) *Server {
+func New(ctx context.Context, twitchAppClientId string, twitchAppClientSecret string, extensionClientId string, webhookSecret string, q *queries.Queries, eventsubClient *eventsub.Client, chatClient *chat.Client, eventsChan chan *chat.Event) *Server {
 	s := &Server{
-		extensionClientId: extensionClientId,
-		webhookSecret:     webhookSecret,
-		q:                 q,
-		eventsub:          eventsubClient,
-		chat:              chatClient,
-		eventsChan:        eventsChan,
+		twitchAppClientId:     twitchAppClientId,
+		twitchAppClientSecret: twitchAppClientSecret,
+		extensionClientId:     extensionClientId,
+		webhookSecret:         webhookSecret,
+		q:                     q,
+		eventsub:              eventsubClient,
+		chat:                  chatClient,
+		eventsChan:            eventsChan,
 		alerts: &subcriberChannels[*Alert]{
 			chs: make(map[int]chan *Alert),
 		},

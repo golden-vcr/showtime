@@ -89,7 +89,17 @@ func main() {
 	if err != nil {
 		log.Fatalf("error initializing Twitch IRC chat client: %v", err)
 	}
-	srv := server.New(ctx, config.TwitchExtensionClientId, config.TwitchWebhookSecret, q, eventsubClient, chatClient, eventsChan)
+	srv := server.New(
+		ctx,
+		config.TwitchClientId,
+		config.TwitchClientSecret,
+		config.TwitchExtensionClientId,
+		config.TwitchWebhookSecret,
+		q,
+		eventsubClient,
+		chatClient,
+		eventsChan,
+	)
 
 	addr := fmt.Sprintf("%s:%d", config.BindAddr, config.ListenPort)
 	server := &http.Server{Addr: addr, Handler: srv}
