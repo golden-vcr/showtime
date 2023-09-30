@@ -44,6 +44,9 @@ func (s *Server) handleAuthLogin(res http.ResponseWriter, req *http.Request) {
 
 	// Resolve details for the auth'd user given our new access token
 	client.SetUserAccessToken(tokenResponse.Data.AccessToken)
+	fmt.Printf("- access token: %s\n", tokenResponse.Data.AccessToken)
+	fmt.Printf("- refresh token: %s\n", tokenResponse.Data.RefreshToken)
+	fmt.Printf("- scopes: %v\n", tokenResponse.Data.Scopes)
 	twitchUser, err := resolveTwitchUser(client)
 	if err != nil {
 		fmt.Printf("failed to resolve twitch user from access token post-login: %v\n", err)
@@ -139,6 +142,8 @@ func parseAuthorizationHeader(value string) string {
 
 func resolveTwitchUser(client *helix.Client) (*helix.User, error) {
 	r, err := client.GetUsers(&helix.UsersParams{})
+	fmt.Printf("GetUsers r: %+v\n", r)
+	fmt.Printf("GetUsers err: %v\n", err)
 	if err != nil {
 		return nil, err
 	}
