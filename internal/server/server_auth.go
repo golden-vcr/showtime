@@ -38,15 +38,17 @@ func (s *Server) handleAuthLogin(res http.ResponseWriter, req *http.Request) {
 	tokenResponse, err := client.RequestUserAccessToken(code)
 	if err != nil {
 		fmt.Printf("failed to get user access token: %v\n", err)
-		respondWithLoggedOut(res, err)
+		respondWithLoggedOut(res, err.Error())
+		return
+	}
+	if tokenResponse.StatusCode != http.StatusOK {
+		fmt.Printf("got %d response from RequestUserAccessToken: %s\n", tokenResponse.StatusCode, tokenResponse.ErrorMessage)
+		respondWithLoggedOut(res, tokenResponse.ErrorMessage)
 		return
 	}
 
 	// Resolve details for the auth'd user given our new access token
 	client.SetUserAccessToken(tokenResponse.Data.AccessToken)
-	fmt.Printf("- access token: %s\n", tokenResponse.Data.AccessToken)
-	fmt.Printf("- refresh token: %s\n", tokenResponse.Data.RefreshToken)
-	fmt.Printf("- scopes: %v\n", tokenResponse.Data.Scopes)
 	twitchUser, err := resolveTwitchUser(client)
 	if err != nil {
 		fmt.Printf("failed to resolve twitch user from access token post-login: %v\n", err)
@@ -85,7 +87,12 @@ func (s *Server) handleAuthRefresh(res http.ResponseWriter, req *http.Request) {
 	refreshResponse, err := client.RefreshUserAccessToken(refreshToken)
 	if err != nil {
 		fmt.Printf("failed to refresh access token: %v\n", err)
-		respondWithLoggedOut(res, err)
+		respondWithLoggedOut(res, err.Error())
+		return
+	}
+	if refreshResponse.StatusCode != http.StatusOK {
+		fmt.Printf("got %d response from RefreshUserAccessToken: %s\n", refreshResponse.StatusCode, refreshResponse.ErrorMessage)
+		respondWithLoggedOut(res, refreshResponse.ErrorMessage)
 		return
 	}
 
@@ -125,11 +132,18 @@ func (s *Server) handleAuthLogout(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	_, err = client.RevokeUserAccessToken(userAccessToken)
+	revokeResponse, err := client.RevokeUserAccessToken(userAccessToken)
 	if err != nil {
 		fmt.Printf("failed to revoke user access token: %v\n", err)
+		respondWithLoggedOut(res, err.Error())
+		return
 	}
-	respondWithLoggedOut(res, err)
+	if revokeResponse.StatusCode != http.StatusOK {
+		fmt.Printf("got %d response from RevokeUserAccessToken: %s\n", revokeResponse.StatusCode, revokeResponse.ErrorMessage)
+		respondWithLoggedOut(res, revokeResponse.ErrorMessage)
+		return
+	}
+	respondWithLoggedOut(res, "")
 }
 
 func parseAuthorizationHeader(value string) string {
@@ -142,10 +156,11 @@ func parseAuthorizationHeader(value string) string {
 
 func resolveTwitchUser(client *helix.Client) (*helix.User, error) {
 	r, err := client.GetUsers(&helix.UsersParams{})
-	fmt.Printf("GetUsers r: %+v\n", r)
-	fmt.Printf("GetUsers err: %v\n", err)
 	if err != nil {
 		return nil, err
+	}
+	if r.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("got response %d from Users: %s", r.StatusCode, r.ErrorMessage)
 	}
 	if len(r.Data.Users) != 1 {
 		return nil, fmt.Errorf("GetUsers returned %d results; expected 1", len(r.Data.Users))
@@ -173,14 +188,10 @@ func respondWithLoggedIn(res http.ResponseWriter, twitchUser *helix.User, twitch
 	}
 }
 
-func respondWithLoggedOut(res http.ResponseWriter, err error) {
-	errorString := ""
-	if err != nil {
-		errorString = err.Error()
-	}
+func respondWithLoggedOut(res http.ResponseWriter, errorMessage string) {
 	state := &AuthState{
 		LoggedIn: false,
-		Error:    errorString,
+		Error:    errorMessage,
 	}
 	data, marshalErr := json.Marshal(state)
 	if marshalErr != nil {
