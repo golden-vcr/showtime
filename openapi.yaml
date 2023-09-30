@@ -92,6 +92,11 @@ paths:
           required: true
           schema:
             type: string
+        - in: query
+          name: redirect_uri
+          required: true
+          schema:
+            type: string
       responses:
         '200':
           description: |-
@@ -108,7 +113,7 @@ paths:
           description: |-
             Request was invalid due to missing `code` query parameter (should be set to
             an authorization code received from Twitch via the OAuth authorization code
-            grant flow.
+            grant flow) or `redirect_uri` parameter.
         '401':
           description: |-
             Login failed: the user should remain logged out, and the provided error may

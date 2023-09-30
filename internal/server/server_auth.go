@@ -17,11 +17,17 @@ func (s *Server) handleAuthLogin(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// Require a Twitch authorization code in the URL params
+	// Require a Twitch authorization code and redirect URI in the URL params
 	code := req.URL.Query().Get("code")
 	if code == "" {
 		fmt.Printf("Got login request with missing 'code' parameter\n")
 		http.Error(res, "'code' URL parameter is required", http.StatusBadRequest)
+		return
+	}
+	redirectUri := req.URL.Query().Get("redirect_uri")
+	if redirectUri == "" {
+		fmt.Printf("Got login request with missing 'redirect_uri' parameter\n")
+		http.Error(res, "'redirect_uri' URL parameter is required", http.StatusBadRequest)
 		return
 	}
 
@@ -29,6 +35,7 @@ func (s *Server) handleAuthLogin(res http.ResponseWriter, req *http.Request) {
 	client, err := helix.NewClientWithContext(req.Context(), &helix.Options{
 		ClientID:     s.twitchAppClientId,
 		ClientSecret: s.twitchAppClientSecret,
+		RedirectURI:  redirectUri,
 	})
 	if err != nil {
 		fmt.Printf("failed to initialize twitch client for login: %v\n", err)
