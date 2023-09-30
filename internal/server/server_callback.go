@@ -82,7 +82,7 @@ func (s *Server) handlePostCallback(res http.ResponseWriter, req *http.Request) 
 	if ev.Type == helix.EventSubTypeChannelFollow {
 		err := s.q.RecordViewerFollow(context.Background(), queries.RecordViewerFollowParams{
 			TwitchUserID:      ev.ChannelFollow.UserId,
-			TwitchDisplayName: ev.ChannelFollow.BroadcasterUserName,
+			TwitchDisplayName: ev.ChannelFollow.UserName,
 		})
 		if err != nil {
 			fmt.Printf("Failed to record viewer follow: %v\n", err)
