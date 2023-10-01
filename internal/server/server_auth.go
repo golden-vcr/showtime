@@ -11,13 +11,6 @@ import (
 )
 
 func (s *Server) handleAuthLogin(res http.ResponseWriter, req *http.Request) {
-	// Only handle POST requests
-	if req.Method != http.MethodPost {
-		fmt.Printf("Got login request with unsupported method %s\n", req.Method)
-		http.Error(res, "unsupported method", http.StatusMethodNotAllowed)
-		return
-	}
-
 	// Require a Twitch authorization code and redirect URI in the URL params
 	code := req.URL.Query().Get("code")
 	if code == "" {
@@ -79,13 +72,6 @@ func (s *Server) handleAuthLogin(res http.ResponseWriter, req *http.Request) {
 }
 
 func (s *Server) handleAuthRefresh(res http.ResponseWriter, req *http.Request) {
-	// Only handle POST requests
-	if req.Method != http.MethodPost {
-		fmt.Printf("Got refresh request with unsupported method %s\n", req.Method)
-		http.Error(res, "unsupported method", http.StatusMethodNotAllowed)
-		return
-	}
-
 	// Require a Twitch refresh token in the Authorization header
 	refreshToken := parseAuthorizationHeader(req.Header.Get("authorization"))
 	if refreshToken == "" {
@@ -142,13 +128,6 @@ func (s *Server) handleAuthRefresh(res http.ResponseWriter, req *http.Request) {
 }
 
 func (s *Server) handleAuthLogout(res http.ResponseWriter, req *http.Request) {
-	// Only handle POST requests
-	if req.Method != http.MethodPost {
-		fmt.Printf("Got logout request with unsupported method %s\n", req.Method)
-		http.Error(res, "unsupported method", http.StatusMethodNotAllowed)
-		return
-	}
-
 	// Require a Twitch user access token in the Authorization header
 	userAccessToken := parseAuthorizationHeader(req.Header.Get("authorization"))
 	if userAccessToken == "" {

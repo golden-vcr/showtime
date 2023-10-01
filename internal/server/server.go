@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"sync"
 
+	"github.com/gorilla/mux"
 	"github.com/nicklaw5/helix/v2"
 	"github.com/rs/cors"
 
@@ -59,16 +60,16 @@ func New(ctx context.Context, twitchConfig twitch.Config, twitchClient *helix.Cl
 		AllowedMethods: []string{http.MethodGet},
 	})
 
-	mux := http.NewServeMux()
-	mux.HandleFunc("/", s.handleStatus)
-	mux.HandleFunc("/auth/login", s.handleAuthLogin)
-	mux.HandleFunc("/auth/refresh", s.handleAuthRefresh)
-	mux.HandleFunc("/auth/logout", s.handleAuthLogout)
-	mux.HandleFunc("/callback", s.handlePostCallback)
-	mux.HandleFunc("/alerts", s.handleAlerts)
-	mux.HandleFunc("/chat", s.handleChat)
-	mux.HandleFunc("/view", s.handleView)
-	s.Handler = withCors.Handler(mux)
+	r := mux.NewRouter()
+	r.Path("/").Methods("GET").HandlerFunc(s.handleStatus)
+	r.Path("/auth/login").Methods("POST").HandlerFunc(s.handleAuthLogin)
+	r.Path("/auth/refresh").Methods("POST").HandlerFunc(s.handleAuthRefresh)
+	r.Path("/auth/logout").Methods("POST").HandlerFunc(s.handleAuthLogout)
+	r.Path("/callback").Methods("POST").HandlerFunc(s.handlePostCallback)
+	r.Path("/alerts").Methods("GET").HandlerFunc(s.handleAlerts)
+	r.Path("/chat").Methods("GET").HandlerFunc(s.handleChat)
+	r.Path("/view").Methods("GET").HandlerFunc(s.handleView)
+	s.Handler = withCors.Handler(r)
 
 	go func() {
 		for {

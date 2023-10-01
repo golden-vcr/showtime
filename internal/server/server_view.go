@@ -8,13 +8,6 @@ import (
 )
 
 func (s *Server) handleView(res http.ResponseWriter, req *http.Request) {
-	// Only handle GET requests
-	if req.Method != http.MethodGet {
-		fmt.Printf("Got view request with unsupported method %s\n", req.Method)
-		http.Error(res, "unsupported method", http.StatusMethodNotAllowed)
-		return
-	}
-
 	// Look up the current tape ID, defaulting to "" if no tape change has ever been
 	// recorded
 	tapeId, err := s.q.GetCurrentTapeId(req.Context())

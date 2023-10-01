@@ -11,13 +11,6 @@ import (
 )
 
 func (s *Server) handleAlerts(res http.ResponseWriter, req *http.Request) {
-	// Only handle GET requests
-	if req.Method != http.MethodGet {
-		fmt.Printf("Got alerts request with unsupported method %s\n", req.Method)
-		http.Error(res, "unsupported method", http.StatusMethodNotAllowed)
-		return
-	}
-
 	// If a content-type is explicitly requested, require that it's text/event-stream
 	accept := req.Header.Get("accept")
 	if accept != "" && accept != "*/*" && !strings.HasPrefix(accept, "text/event-stream") {

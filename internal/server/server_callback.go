@@ -17,13 +17,6 @@ type callbackPayload struct {
 }
 
 func (s *Server) handlePostCallback(res http.ResponseWriter, req *http.Request) {
-	// Only handle POST requests
-	if req.Method != http.MethodPost {
-		fmt.Printf("Got callback with unsupported method %s\n", req.Method)
-		res.WriteHeader(http.StatusMethodNotAllowed)
-		return
-	}
-
 	// Pre-emptively read the request body so we can verify its signature
 	body, err := io.ReadAll(req.Body)
 	if err != nil {
