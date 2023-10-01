@@ -108,7 +108,8 @@ func main() {
 	// we're getting events for has authorized our app. Until the user explicitly
 	// grants authorization via an in-browser OAuth flow, the Twitch API will respond
 	// with 403 errors when we attempt to create EventSub subscriptions.
-	_, err = twitch.PromptForCodeGrant(context.Background(), config.TwitchClientId, showtime.GetRequiredUserScopes(), 3033)
+	scopes := events.GetRequiredUserScopes(showtime.RequiredSubscriptions)
+	_, err = twitch.PromptForCodeGrant(context.Background(), config.TwitchClientId, scopes, 3033)
 	if err != nil {
 		log.Fatalf("failed to get user authorization: %v", err)
 	}
