@@ -34,8 +34,8 @@ func (s *Server) handleAuthLogin(res http.ResponseWriter, req *http.Request) {
 
 	// Exchange code for access token
 	client, err := helix.NewClientWithContext(req.Context(), &helix.Options{
-		ClientID:     s.twitchAppClientId,
-		ClientSecret: s.twitchAppClientSecret,
+		ClientID:     s.twitchConfig.ClientId,
+		ClientSecret: s.twitchConfig.ClientSecret,
 		RedirectURI:  redirectUri,
 	})
 	if err != nil {
@@ -96,8 +96,8 @@ func (s *Server) handleAuthRefresh(res http.ResponseWriter, req *http.Request) {
 
 	// Use refresh token to get new access token
 	client, err := helix.NewClientWithContext(req.Context(), &helix.Options{
-		ClientID:     s.twitchAppClientId,
-		ClientSecret: s.twitchAppClientSecret,
+		ClientID:     s.twitchConfig.ClientId,
+		ClientSecret: s.twitchConfig.ClientSecret,
 	})
 	if err != nil {
 		fmt.Printf("failed to initialize twitch client for refresh: %v\n", err)
@@ -159,7 +159,7 @@ func (s *Server) handleAuthLogout(res http.ResponseWriter, req *http.Request) {
 
 	// TODO: Revoke access token
 	client, err := helix.NewClientWithContext(req.Context(), &helix.Options{
-		ClientID: s.twitchAppClientId,
+		ClientID: s.twitchConfig.ClientId,
 	})
 	if err != nil {
 		fmt.Printf("failed to initialize twitch client for logout: %v\n", err)

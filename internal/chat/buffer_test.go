@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestMessageBuffer(t *testing.T) {
+func Test_MessageBuffer(t *testing.T) {
 	b := newMessageBuffer(4)
 
 	assert.Len(t, b.messages, 4)

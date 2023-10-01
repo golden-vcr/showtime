@@ -1,4 +1,4 @@
-package eventsub
+package twitch
 
 import (
 	"context"
@@ -77,7 +77,7 @@ func PromptForCodeGrant(ctx context.Context, twitchAppClientId string, scopes []
 	q.Add("response_type", "code")
 	q.Add("client_id", twitchAppClientId)
 	q.Add("redirect_uri", callbackUrl)
-	q.Add("scope", strings.Join(scopes, "+"))
+	q.Add("scope", strings.Join(scopes, " "))
 	q.Add("state", csrfToken)
 	authorizeUrl.RawQuery = q.Encode()
 
@@ -143,7 +143,7 @@ func parseCodeGrant(req *http.Request, csrfToken string, desiredScopes []string)
 	if scopeValue == "" {
 		return nil, fmt.Errorf("'scope' value not found in URL query params")
 	}
-	scopes := strings.Split(scopeValue, "+")
+	scopes := strings.Split(scopeValue, " ")
 	if len(scopes) == 0 {
 		return nil, fmt.Errorf("'scope' must specify at least one user scope")
 	}

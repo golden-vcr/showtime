@@ -6,51 +6,55 @@ import (
 	"net/http"
 	"sync"
 
+	"github.com/nicklaw5/helix/v2"
 	"github.com/rs/cors"
 
 	"github.com/golden-vcr/showtime/gen/queries"
+	"github.com/golden-vcr/showtime/internal/alerts"
 	"github.com/golden-vcr/showtime/internal/chat"
-	"github.com/golden-vcr/showtime/internal/eventsub"
+	"github.com/golden-vcr/showtime/internal/events"
+	"github.com/golden-vcr/showtime/internal/twitch"
 )
 
 type Server struct {
 	http.Handler
 
-	twitchAppClientId     string
-	twitchAppClientSecret string
-	extensionClientId     string
-	webhookSecret         string
-	q                     *queries.Queries
-	eventsub              *eventsub.Client
-	chat                  *chat.Client
-	eventsChan            chan *chat.Event
+	twitchConfig  twitch.Config
+	twitchClient  *helix.Client
+	channelUserId string
 
-	alerts     *subcriberChannels[*Alert]
-	chatEvents *subcriberChannels[*chat.Event]
+	q *queries.Queries
+
+	chat           *chat.Client
+	chatEventsChan <-chan *chat.Event
+	chatEvents     *subcriberChannels[*chat.Event]
+
+	eventHandler *events.Handler
+	alerts       *subcriberChannels[*alerts.Alert]
 }
 
-func New(ctx context.Context, twitchAppClientId string, twitchAppClientSecret string, extensionClientId string, webhookSecret string, q *queries.Queries, eventsubClient *eventsub.Client, chatClient *chat.Client, eventsChan chan *chat.Event) *Server {
+func New(ctx context.Context, twitchConfig twitch.Config, twitchClient *helix.Client, channelUserId string, q *queries.Queries, chatClient *chat.Client, chatEventsChan chan *chat.Event) *Server {
+	alertsChan := make(chan *alerts.Alert, 32)
 	s := &Server{
-		twitchAppClientId:     twitchAppClientId,
-		twitchAppClientSecret: twitchAppClientSecret,
-		extensionClientId:     extensionClientId,
-		webhookSecret:         webhookSecret,
-		q:                     q,
-		eventsub:              eventsubClient,
-		chat:                  chatClient,
-		eventsChan:            eventsChan,
-		alerts: &subcriberChannels[*Alert]{
-			chs: make(map[int]chan *Alert),
-		},
+		twitchConfig:   twitchConfig,
+		twitchClient:   twitchClient,
+		channelUserId:  channelUserId,
+		q:              q,
+		chat:           chatClient,
+		chatEventsChan: chatEventsChan,
 		chatEvents: &subcriberChannels[*chat.Event]{
 			chs: make(map[int]chan *chat.Event),
+		},
+		eventHandler: events.NewHandler(ctx, q, alertsChan),
+		alerts: &subcriberChannels[*alerts.Alert]{
+			chs: make(map[int]chan *alerts.Alert),
 		},
 	}
 
 	withCors := cors.New(cors.Options{
 		AllowedOrigins: []string{
 			"https://localhost:8080",
-			fmt.Sprintf("https://%s.ext-twitch.tv", extensionClientId),
+			fmt.Sprintf("https://%s.ext-twitch.tv", s.twitchConfig.ExtensionClientId),
 		},
 		AllowedMethods: []string{http.MethodGet},
 	})
@@ -71,8 +75,10 @@ func New(ctx context.Context, twitchAppClientId string, twitchAppClientSecret st
 			select {
 			case <-ctx.Done():
 				break
-			case event := <-s.eventsChan:
+			case event := <-s.chatEventsChan:
 				s.chatEvents.broadcast(event)
+			case alert := <-alertsChan:
+				s.alerts.broadcast(alert)
 			}
 		}
 	}()

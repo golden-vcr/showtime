@@ -1,9 +1,7 @@
-package server
+package alerts
 
 import (
 	"encoding/json"
-
-	"github.com/nicklaw5/helix/v2"
 )
 
 const (
@@ -38,29 +36,4 @@ func (ad AlertData) MarshalJSON() ([]byte, error) {
 		return json.Marshal(ad.Raid)
 	}
 	return json.Marshal(nil)
-}
-
-func (ev *Event) ToAlert() (*Alert, error) {
-	switch ev.Type {
-	case helix.EventSubTypeChannelFollow:
-		return &Alert{
-			Type: AlertTypeFollow,
-			Data: AlertData{
-				Follow: &AlertDataFollow{
-					Username: ev.ChannelFollow.UserName,
-				},
-			},
-		}, nil
-	case helix.EventSubTypeChannelRaid:
-		return &Alert{
-			Type: AlertTypeRaid,
-			Data: AlertData{
-				Raid: &AlertDataRaid{
-					Username:   ev.ChannelRaid.UserName,
-					NumViewers: ev.ChannelRaid.Viewers,
-				},
-			},
-		}, nil
-	}
-	return nil, nil
 }

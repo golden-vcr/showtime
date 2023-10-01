@@ -16,11 +16,10 @@ import (
 	_ "github.com/lib/pq"
 	"golang.org/x/sync/errgroup"
 
-	"github.com/golden-vcr/showtime"
 	"github.com/golden-vcr/showtime/gen/queries"
 	"github.com/golden-vcr/showtime/internal/chat"
-	"github.com/golden-vcr/showtime/internal/eventsub"
 	"github.com/golden-vcr/showtime/internal/server"
+	"github.com/golden-vcr/showtime/internal/twitch"
 )
 
 type Config struct {
@@ -43,6 +42,7 @@ type Config struct {
 }
 
 func main() {
+	// Parse config from environment variables
 	err := godotenv.Load()
 	if err != nil && !os.IsNotExist(err) {
 		log.Fatalf("error loading .env file: %v", err)
@@ -52,9 +52,23 @@ func main() {
 		log.Fatalf("error loading config: %v", err)
 	}
 
+	// TODO: Embed in top-level Config struct
+	twitchConfig := twitch.Config{
+		ChannelName:        config.TwitchChannelName,
+		ClientId:           config.TwitchClientId,
+		ClientSecret:       config.TwitchClientSecret,
+		ExtensionClientId:  config.TwitchExtensionClientId,
+		WebhookCallbackUrl: config.TwitchWebhookCallbackUrl,
+		WebhookSecret:      config.TwitchWebhookSecret,
+	}
+
+	// Shut down cleanly on
 	ctx, close := signal.NotifyContext(context.Background(), os.Interrupt, os.Kill, syscall.SIGTERM)
 	defer close()
 
+	// Configure our database connection and initialize a Queries struct, so we can read
+	// and write to the 'showtime' schema in response to HTTP requests, EventSub
+	// notifications, etc.
 	connectionString := formatConnectionString(
 		config.DatabaseHost,
 		config.DatabasePort,
@@ -73,37 +87,40 @@ func main() {
 	}
 	q := queries.New(db)
 
-	eventsubClient, err := eventsub.NewClient(
-		config.TwitchChannelName,
-		config.TwitchClientId,
-		config.TwitchClientSecret,
-		config.TwitchWebhookCallbackUrl,
-		config.TwitchWebhookSecret,
-		showtime.RequiredSubscriptions)
+	//
+	twitchClient, err := twitch.NewClientWithAppToken(twitchConfig.ClientId, twitchConfig.ClientSecret)
 	if err != nil {
-		log.Fatalf("error initializing Twitch EventSub API client: %v", err)
+		log.Fatalf("error initializing Twitch API client: %v", err)
+	}
+	channelUserId, err := twitch.GetChannelUserId(twitchClient, twitchConfig.ChannelName)
+	if err != nil {
+		log.Fatalf("error getting Twitch channel user ID: %v", err)
 	}
 
-	eventsChan := make(chan *chat.Event, 32)
-	chatClient, err := chat.NewClient(ctx, config.TwitchChannelName, eventsChan)
+	// Make a channel to contain chat events, then start up an IRC client to write to
+	// that channel in response to IRC messages
+	chatEventsChan := make(chan *chat.Event, 32)
+	chatClient, err := chat.NewClient(ctx, config.TwitchChannelName, chatEventsChan)
 	if err != nil {
 		log.Fatalf("error initializing Twitch IRC chat client: %v", err)
 	}
+
+	// Initialize our HTTP server, which glues all of the above into a coherent set of
+	// endpoints for clients to call
 	srv := server.New(
 		ctx,
-		config.TwitchClientId,
-		config.TwitchClientSecret,
-		config.TwitchExtensionClientId,
-		config.TwitchWebhookSecret,
+		twitchConfig,
+		twitchClient,
+		channelUserId,
 		q,
-		eventsubClient,
 		chatClient,
-		eventsChan,
+		chatEventsChan,
 	)
-
 	addr := fmt.Sprintf("%s:%d", config.BindAddr, config.ListenPort)
 	server := &http.Server{Addr: addr, Handler: srv}
 
+	// Handle incoming HTTP connections until our top-level context is canceled, at
+	// which point shut down cleanyl
 	fmt.Printf("Listening on %s...\n", addr)
 	var wg errgroup.Group
 	wg.Go(server.ListenAndServe)

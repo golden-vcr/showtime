@@ -2,13 +2,11 @@ package server
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 
-	"github.com/golden-vcr/showtime/gen/queries"
 	"github.com/nicklaw5/helix/v2"
 )
 
@@ -36,7 +34,7 @@ func (s *Server) handlePostCallback(res http.ResponseWriter, req *http.Request) 
 	defer req.Body.Close()
 
 	// Verify that this event comes from Twitch: abort if phony
-	if !helix.VerifyEventSubNotification(s.webhookSecret, req.Header, string(body)) {
+	if !helix.VerifyEventSubNotification(s.twitchConfig.WebhookSecret, req.Header, string(body)) {
 		fmt.Printf("Failed to verify signature from callback request\n")
 		http.Error(res, "Signature verification failed", http.StatusBadRequest)
 		return
@@ -47,15 +45,6 @@ func (s *Server) handlePostCallback(res http.ResponseWriter, req *http.Request) 
 	if err := json.NewDecoder(bytes.NewReader(body)).Decode(&payload); err != nil {
 		fmt.Printf("Failed to decode callback request body from JSON\n")
 		http.Error(res, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	// Parse the payload to a supported Event struct: if the subscription type is
-	// unsupported, abort
-	ev, err := parseEvent(&payload.Subscription, payload.Event)
-	if err != nil {
-		fmt.Printf("Failed to parse event for subscription type '%s': %v\n", payload.Subscription.Type, err)
-		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -73,29 +62,9 @@ func (s *Server) handlePostCallback(res http.ResponseWriter, req *http.Request) 
 	// We can accept the event, so respond with 200
 	fmt.Printf("Got event of type %q\n", payload.Subscription.Type)
 	fmt.Printf("- %s\n", string(payload.Event))
-	fmt.Printf("- %v\n", ev)
 	res.WriteHeader(http.StatusOK)
 
-	// If this is a new follow, upsert into the viewer table to record that this user
-	// follows us now
-	// TODO: Make event->alert logic happen outside of the request handler?
-	if ev.Type == helix.EventSubTypeChannelFollow {
-		err := s.q.RecordViewerFollow(context.Background(), queries.RecordViewerFollowParams{
-			TwitchUserID:      ev.ChannelFollow.UserId,
-			TwitchDisplayName: ev.ChannelFollow.UserName,
-		})
-		if err != nil {
-			fmt.Printf("Failed to record viewer follow: %v\n", err)
-		}
-	}
-
-	// If this event should produce an alert, fan that alert out to all SSE connections
-	alert, err := ev.ToAlert()
-	if err != nil {
-		fmt.Printf("Failed to produce an alert from event of type '%s': %v\n", ev.Type, err)
-		return
-	}
-	if alert != nil {
-		s.alerts.broadcast(alert)
+	if err := s.eventHandler.HandleEvent(req.Context(), &payload.Subscription, payload.Event); err != nil {
+		fmt.Printf("Failed to handle event of type '%s': %v\n", payload.Subscription.Type, err)
 	}
 }

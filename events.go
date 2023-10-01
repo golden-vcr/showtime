@@ -3,24 +3,24 @@ package showtime
 import (
 	"sort"
 
-	"github.com/golden-vcr/showtime/internal/eventsub"
+	"github.com/golden-vcr/showtime/internal/events"
 	"github.com/nicklaw5/helix/v2"
 )
 
 // RequiredSubscriptions declares all of the subscriptions that our showtime API
 // supports
-var RequiredSubscriptions = []eventsub.Subscription{
+var RequiredSubscriptions = []events.RequiredSubscription{
 	{
 		Type:    helix.EventSubTypeChannelUpdate,
 		Version: "2",
-		Condition: helix.EventSubCondition{
+		TemplatedCondition: helix.EventSubCondition{
 			BroadcasterUserID: "{{.ChannelUserId}}",
 		},
 	},
 	{
 		Type:    helix.EventSubTypeChannelFollow,
 		Version: "2",
-		Condition: helix.EventSubCondition{
+		TemplatedCondition: helix.EventSubCondition{
 			BroadcasterUserID: "{{.ChannelUserId}}",
 			ModeratorUserID:   "{{.ChannelUserId}}",
 		},

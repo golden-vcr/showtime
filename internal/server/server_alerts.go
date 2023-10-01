@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/golden-vcr/showtime/internal/alerts"
 )
 
 func (s *Server) handleAlerts(res http.ResponseWriter, req *http.Request) {
@@ -32,7 +34,7 @@ func (s *Server) handleAlerts(res http.ResponseWriter, req *http.Request) {
 	res.(http.Flusher).Flush()
 
 	// Open a channel to receive alert notifications as they happen
-	ch := make(chan *Alert, 32)
+	ch := make(chan *alerts.Alert, 32)
 	handle := s.alerts.register(ch)
 
 	// Send an initial keepalive message: this ensures that Cloudfront will kick into
