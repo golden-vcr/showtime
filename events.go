@@ -28,6 +28,13 @@ var RequiredSubscriptions = []events.RequiredSubscription{
 			"moderator:read:followers",
 		},
 	},
+	{
+		Type:    helix.EventSubTypeChannelRaid,
+		Version: "1",
+		TemplatedCondition: helix.EventSubCondition{
+			ToBroadcasterUserID: "{{.ChannelUserId}}",
+		},
+	},
 }
 
 // GetRequiredUserScopes returns a list of all OAuth scopes that the connected Twitch
