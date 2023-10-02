@@ -23,10 +23,6 @@ type ShowtimeViewer struct {
 	TwitchUserID string
 	// Last known username by which this user was known, formatted for display.
 	TwitchDisplayName string
-	// Timestamp when the user first logged in at goldenvcr.com, if if ever.
-	FirstLoggedInAt sql.NullTime
-	// Timestamp when the user most recently logged in at goldenvcr.com, if ever.
-	LastLoggedInAt sql.NullTime
 	// Timestamp when the user first followed GoldenVCR on twitch, if ever.
 	FirstFollowedAt sql.NullTime
 }
