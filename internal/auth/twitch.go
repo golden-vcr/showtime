@@ -10,6 +10,7 @@ import (
 )
 
 var ErrFailedToInitializeTwitchClient = errors.New("failed to initialize twitch client")
+var ErrTwitchReturnedUnauthorized = errors.New("got 401 response from Twitch API")
 
 type TwitchClient interface {
 	GetUserAccessToken(ctx context.Context, code string, redirectUri string) (*helix.AccessCredentials, error)
@@ -45,6 +46,9 @@ func (t *twitchClient) GetUserAccessToken(ctx context.Context, code string, redi
 		return nil, fmt.Errorf("failed to get user access token: %w", err)
 	}
 	if r.StatusCode != http.StatusOK {
+		if r.StatusCode == http.StatusUnauthorized {
+			return nil, ErrTwitchReturnedUnauthorized
+		}
 		return nil, fmt.Errorf("got %d response from RequestUserAccessToken: %s", r.StatusCode, r.ErrorMessage)
 	}
 	return &r.Data, nil
@@ -64,6 +68,9 @@ func (t *twitchClient) RefreshUserAccessToken(ctx context.Context, refreshToken 
 		return nil, fmt.Errorf("failed to refresh access token: %w", err)
 	}
 	if r.StatusCode != http.StatusOK {
+		if r.StatusCode == http.StatusUnauthorized {
+			return nil, ErrTwitchReturnedUnauthorized
+		}
 		return nil, fmt.Errorf("got %d response from RefreshUserAccessToken: %s\n", r.StatusCode, r.ErrorMessage)
 	}
 	return &r.Data, nil
@@ -102,6 +109,9 @@ func (t *twitchClient) ResolveUserDetailsFromAccessToken(ctx context.Context, ac
 		return nil, err
 	}
 	if r.StatusCode != http.StatusOK {
+		if r.StatusCode == http.StatusUnauthorized {
+			return nil, ErrTwitchReturnedUnauthorized
+		}
 		return nil, fmt.Errorf("got response %d from Users: %s", r.StatusCode, r.ErrorMessage)
 	}
 	if len(r.Data.Users) != 1 {

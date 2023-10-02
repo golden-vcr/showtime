@@ -77,7 +77,7 @@ func Test_Server_handleLogin(t *testing.T) {
 	}
 	for _, tt := range tests {
 		s := &Server{
-			client: &mockTwitchClient{},
+			client: &authenticationTestClient{},
 			q:      tt.q,
 		}
 		r := mux.NewRouter()
@@ -155,7 +155,7 @@ func Test_Server_handleRefresh(t *testing.T) {
 	}
 	for _, tt := range tests {
 		s := &Server{
-			client: &mockTwitchClient{},
+			client: &authenticationTestClient{},
 			q:      tt.q,
 		}
 		r := mux.NewRouter()
@@ -188,7 +188,7 @@ func Test_Server_handleLogout(t *testing.T) {
 	tests := []struct {
 		name             string
 		accessToken      string
-		client           *mockTwitchClient
+		client           *authenticationTestClient
 		wantStatus       int
 		wantBody         string
 		wantTokenRevoked bool
@@ -196,7 +196,7 @@ func Test_Server_handleLogout(t *testing.T) {
 		{
 			"logout with valid token produces 200 and logged-out AuthState",
 			MockTwitchAccessToken,
-			&mockTwitchClient{},
+			&authenticationTestClient{},
 			http.StatusOK,
 			`{"loggedIn":false}`,
 			true,
@@ -204,7 +204,7 @@ func Test_Server_handleLogout(t *testing.T) {
 		{
 			"logout with invalid token produces 401 and logged-out AuthState",
 			"invalid-access-token",
-			&mockTwitchClient{},
+			&authenticationTestClient{},
 			http.StatusUnauthorized,
 			`{"loggedIn":false,"error":"mock error"}`,
 			false,
@@ -212,7 +212,7 @@ func Test_Server_handleLogout(t *testing.T) {
 		{
 			"logout with missing token produces a 400 error",
 			"",
-			&mockTwitchClient{},
+			&authenticationTestClient{},
 			http.StatusBadRequest,
 			`Twitch user access token must be supplied in Authorization header`,
 			false,
@@ -244,11 +244,11 @@ func Test_Server_handleLogout(t *testing.T) {
 	}
 }
 
-type mockTwitchClient struct {
+type authenticationTestClient struct {
 	revokedTokens []string
 }
 
-func (m *mockTwitchClient) hasTokenBeenRevoked(token string) bool {
+func (m *authenticationTestClient) hasTokenBeenRevoked(token string) bool {
 	for _, t := range m.revokedTokens {
 		if t == token {
 			return true
@@ -257,7 +257,7 @@ func (m *mockTwitchClient) hasTokenBeenRevoked(token string) bool {
 	return false
 }
 
-func (m *mockTwitchClient) GetUserAccessToken(ctx context.Context, code string, redirectUri string) (*helix.AccessCredentials, error) {
+func (m *authenticationTestClient) GetUserAccessToken(ctx context.Context, code string, redirectUri string) (*helix.AccessCredentials, error) {
 	if redirectUri == "" {
 		return nil, fmt.Errorf("mock error")
 	}
@@ -271,7 +271,7 @@ func (m *mockTwitchClient) GetUserAccessToken(ctx context.Context, code string, 
 	}, nil
 }
 
-func (m *mockTwitchClient) RefreshUserAccessToken(ctx context.Context, refreshToken string) (*helix.AccessCredentials, error) {
+func (m *authenticationTestClient) RefreshUserAccessToken(ctx context.Context, refreshToken string) (*helix.AccessCredentials, error) {
 	if refreshToken != MockTwitchRefreshToken {
 		return nil, fmt.Errorf("mock error")
 	}
@@ -282,7 +282,7 @@ func (m *mockTwitchClient) RefreshUserAccessToken(ctx context.Context, refreshTo
 	}, nil
 }
 
-func (m *mockTwitchClient) RevokeUserAccessToken(ctx context.Context, accessToken string) error {
+func (m *authenticationTestClient) RevokeUserAccessToken(ctx context.Context, accessToken string) error {
 	if accessToken != MockTwitchAccessToken && accessToken != MockTwitchAccessTokenAfterRefresh {
 		return fmt.Errorf("mock error")
 	}
@@ -293,7 +293,7 @@ func (m *mockTwitchClient) RevokeUserAccessToken(ctx context.Context, accessToke
 	return nil
 }
 
-func (m *mockTwitchClient) ResolveUserDetailsFromAccessToken(ctx context.Context, accessToken string) (*helix.User, error) {
+func (m *authenticationTestClient) ResolveUserDetailsFromAccessToken(ctx context.Context, accessToken string) (*helix.User, error) {
 	if accessToken != MockTwitchAccessToken && accessToken != MockTwitchAccessTokenAfterRefresh {
 		return nil, fmt.Errorf("mock error")
 	}
@@ -307,7 +307,7 @@ func (m *mockTwitchClient) ResolveUserDetailsFromAccessToken(ctx context.Context
 	}, nil
 }
 
-var _ TwitchClient = (*mockTwitchClient)(nil)
+var _ TwitchClient = (*authenticationTestClient)(nil)
 
 type mockAuthQueries struct {
 	shouldFail bool

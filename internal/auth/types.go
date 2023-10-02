@@ -18,3 +18,15 @@ type AuthState struct {
 	Tokens   *UserTokens  `json:"tokens,omitempty"`
 	Error    string       `json:"error,omitempty"`
 }
+
+type Role string
+
+const (
+	RoleViewer      Role = "viewer"
+	RoleBroadcaster Role = "broadcaster"
+)
+
+type AccessClaims struct {
+	User *UserDetails `json:"user"`
+	Role Role         `json:"role"`
+}

@@ -64,7 +64,7 @@ func New(ctx context.Context, twitchConfig twitch.Config, twitchClient *helix.Cl
 	r := mux.NewRouter()
 	r.Path("/").Methods("GET").HandlerFunc(s.handleStatus)
 
-	authServer := auth.NewServer(twitchConfig.ClientId, twitchConfig.ClientSecret, q)
+	authServer := auth.NewServer(channelUserId, twitchConfig.ClientId, twitchConfig.ClientSecret, q)
 	authServer.RegisterRoutes(r.PathPrefix("/auth/").Subrouter())
 
 	r.Path("/callback").Methods("POST").HandlerFunc(s.handlePostCallback)

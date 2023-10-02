@@ -188,6 +188,37 @@ paths:
                   $ref: '#/components/examples/authStateLoggedOutWithError'
       security:
         - twitchUserAccessToken: []
+  /auth/access:
+    get:
+      tags:
+        - auth
+      summary: |-
+        Check whether the user has access to the app, and with which role
+      operationId: getAccess
+      responses:
+        '200':
+          description: |-
+            The provided user access token is valid: the app can trust that the user
+            bearing this token is authenticated, and that requests made with that token
+            will be permitted up to the level of access indicated by `role`.
+          content:
+            application/json:
+              examples:
+                viewer:
+                  $ref: '#/components/examples/accessClaimsViewer'
+                broadcaster:
+                  $ref: '#/components/examples/accessClaimsBroadcaster'
+        '400':
+          description: |-
+            Request was invalid due to missing `Authorization` header (should contain a
+            Twitch user access token).
+        '401':
+          description: |-
+            The provided token could not be validated. The 401 error should be
+            propagated to the frontend, which may initiate a refresh via `POST /refresh`
+            and, if successful, attempt the original request again with the new token.
+      security:
+        - twitchUserAccessToken: []
   /callback:
     post:
       tags:
@@ -372,6 +403,22 @@ components:
       value:
         loggedIn: false
         error: Something went wrong
+    accessClaimsViewer:
+      summary: Token permits access as an ordinary viewer
+      value:
+        user:
+          id: '90790024'
+          login: wasabimilkshake
+          displayName: wasabimilkshake
+        role: viewer
+    accessClaimsBroadcaster:
+      summary: Token permits access as the broadcaster, i.e. GoldenVCR
+      value:
+        user:
+          id: '953753877'
+          login: goldenvcr
+          displayName: GoldenVCR
+        role: broadcaster
   securitySchemes:
     twitchUserAccessToken:
       type: http
