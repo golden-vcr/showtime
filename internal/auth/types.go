@@ -1,4 +1,4 @@
-package server
+package auth
 
 type UserDetails struct {
 	Id          string `json:"id"`

@@ -9,6 +9,11 @@ import (
 	"github.com/golden-vcr/showtime/internal/events"
 )
 
+type Status struct {
+	IsReady bool   `json:"isReady"`
+	Message string `json:"message"`
+}
+
 func (s *Server) handleStatus(res http.ResponseWriter, req *http.Request) {
 	status := s.resolveStatus()
 	if err := json.NewEncoder(res).Encode(status); err != nil {

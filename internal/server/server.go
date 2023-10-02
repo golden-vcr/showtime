@@ -12,6 +12,7 @@ import (
 
 	"github.com/golden-vcr/showtime/gen/queries"
 	"github.com/golden-vcr/showtime/internal/alerts"
+	"github.com/golden-vcr/showtime/internal/auth"
 	"github.com/golden-vcr/showtime/internal/chat"
 	"github.com/golden-vcr/showtime/internal/events"
 	"github.com/golden-vcr/showtime/internal/twitch"
@@ -62,9 +63,10 @@ func New(ctx context.Context, twitchConfig twitch.Config, twitchClient *helix.Cl
 
 	r := mux.NewRouter()
 	r.Path("/").Methods("GET").HandlerFunc(s.handleStatus)
-	r.Path("/auth/login").Methods("POST").HandlerFunc(s.handleAuthLogin)
-	r.Path("/auth/refresh").Methods("POST").HandlerFunc(s.handleAuthRefresh)
-	r.Path("/auth/logout").Methods("POST").HandlerFunc(s.handleAuthLogout)
+
+	authServer := auth.NewServer(twitchConfig.ClientId, twitchConfig.ClientSecret, q)
+	authServer.RegisterRoutes(r.PathPrefix("/auth/").Subrouter())
+
 	r.Path("/callback").Methods("POST").HandlerFunc(s.handlePostCallback)
 	r.Path("/alerts").Methods("GET").HandlerFunc(s.handleAlerts)
 	r.Path("/chat").Methods("GET").HandlerFunc(s.handleChat)
