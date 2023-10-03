@@ -1,34 +1,27 @@
 package chat
 
-import (
-	"fmt"
-	"strings"
-
-	irc "github.com/gempir/go-twitch-irc/v4"
-)
-
-// EventType is an abstraction on top of IRC messages, presenting the frontend with a
+// LogEventType is an abstraction on top of IRC messages, presenting the frontend with a
 // simplified set of chat events that are germane to rendering the chat log
-type EventType string
+type LogEventType string
 
 const (
-	// EventTypeMessage indicates that a new chat line should be displayed
-	EventTypeMessage EventType = "message"
-	// EventTypeDeletion indicates that one or more previous lines should be deleted
-	EventTypeDeletion EventType = "deletion"
-	// EventTypeClear indicates that all lines should be deleted from the log
-	EventTypeClear EventType = "clear"
+	// LogEventTypeMessage indicates that a new chat line should be displayed
+	LogEventTypeMessage LogEventType = "message"
+	// LogEventTypeDeletion indicates that one or more previous lines should be deleted
+	LogEventTypeDeletion LogEventType = "deletion"
+	// LogEventTypeClear indicates that all lines should be deleted from the log
+	LogEventTypeClear LogEventType = "clear"
 )
 
-// Event is something occurring in Twitch chat that the frontend needs to know about
-type Event struct {
-	Type     EventType `json:"type"`
-	Message  *Message  `json:"message,omitempty"`
-	Deletion *Deletion `json:"deletion,omitempty"`
+// LogEvent is an event in Twitch chat that the chat log UI needs to know about
+type LogEvent struct {
+	Type     LogEventType `json:"type"`
+	Message  *LogMessage  `json:"message,omitempty"`
+	Deletion *LogDeletion `json:"deletion,omitempty"`
 }
 
-// Message is the payload for an event with type 'message'
-type Message struct {
+// LogMessage is the payload for an event with type 'message'
+type LogMessage struct {
 	ID       string         `json:"id"`
 	Username string         `json:"username"`
 	Color    string         `json:"color"`
@@ -41,40 +34,7 @@ type EmoteDetails struct {
 	Url  string `json:"url"`
 }
 
-// Deletion is the payload for an event with type 'deletion'
-type Deletion struct {
+// LogDeletion is the payload for an event with type 'deletion'
+type LogDeletion struct {
 	MessageIDs []string `json:"messageIds"`
-}
-
-// newMessageEvent constructs an Event with type 'message' given an IRC PRIVMSG, or nil
-// if the IRC message should not result in a new chat line being displayed
-func newMessageEvent(m *irc.PrivateMessage) *Event {
-	text, emotes := substituteEmotes(m)
-	return &Event{
-		Type: EventTypeMessage,
-		Message: &Message{
-			ID:       m.ID,
-			Username: m.User.DisplayName,
-			Color:    m.User.Color,
-			Text:     text,
-			Emotes:   emotes,
-		},
-	}
-}
-
-func substituteEmotes(m *irc.PrivateMessage) (string, []EmoteDetails) {
-	tokens := strings.Split(strings.ReplaceAll(m.Message, "$", "$$"), " ")
-	emotes := make([]EmoteDetails, 0, len(m.Emotes))
-	for emoteIndex, emote := range m.Emotes {
-		for tokenIndex := 0; tokenIndex < len(tokens); tokenIndex++ {
-			if tokens[tokenIndex] == emote.Name {
-				tokens[tokenIndex] = fmt.Sprintf("$%d", emoteIndex)
-			}
-		}
-		emotes = append(emotes, EmoteDetails{
-			Name: emote.Name,
-			Url:  fmt.Sprintf("https://static-cdn.jtvnw.net/emoticons/v2/%s/default/dark/1.0", emote.ID),
-		})
-	}
-	return strings.Join(tokens, " "), emotes
 }

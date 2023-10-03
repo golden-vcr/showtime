@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/codingconcepts/env"
 	"github.com/joho/godotenv"
@@ -97,13 +98,13 @@ func main() {
 		log.Fatalf("error getting Twitch channel user ID: %v", err)
 	}
 
-	// Make a channel to contain chat events, then start up an IRC client to write to
-	// that channel in response to IRC messages
-	chatEventsChan := make(chan *chat.Event, 32)
-	chatClient, err := chat.NewClient(ctx, config.TwitchChannelName, chatEventsChan)
+	// Create a chat.Agent which will listen to IRC chat and expose a stream of
+	// chat.LogEvent via a channel
+	chatAgent, err := chat.NewAgent(ctx, chat.NewLog(64), config.TwitchChannelName, time.Second)
 	if err != nil {
-		log.Fatalf("error initializing Twitch IRC chat client: %v", err)
+		log.Fatalf("error initializing chat agent: %v", err)
 	}
+	defer chatAgent.Disconnect()
 
 	// Initialize our HTTP server, which glues all of the above into a coherent set of
 	// endpoints for clients to call
@@ -113,8 +114,7 @@ func main() {
 		twitchClient,
 		channelUserId,
 		q,
-		chatClient,
-		chatEventsChan,
+		chatAgent,
 	)
 	addr := fmt.Sprintf("%s:%d", config.BindAddr, config.ListenPort)
 	server := &http.Server{Addr: addr, Handler: srv}

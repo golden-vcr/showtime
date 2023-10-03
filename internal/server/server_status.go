@@ -35,7 +35,7 @@ func (s *Server) resolveStatus() Status {
 	}
 
 	// TODO: Maybe don't commingle notification status and chat status?
-	if err := s.chat.GetStatus(); err != nil {
+	if err := s.chatAgent.GetStatus(); err != nil {
 		return Status{
 			IsReady: false,
 			Message: fmt.Sprintf(

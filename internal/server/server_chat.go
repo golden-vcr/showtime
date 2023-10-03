@@ -27,7 +27,7 @@ func (s *Server) handleChat(res http.ResponseWriter, req *http.Request) {
 	res.(http.Flusher).Flush()
 
 	// Open a channel to receive chat lines as they're emitted
-	ch := make(chan *chat.Event, 32)
+	ch := make(chan *chat.LogEvent, 32)
 	handle := s.chatEvents.register(ch)
 
 	// Send an initial keepalive message: this ensures that Cloudfront will kick into

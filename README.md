@@ -87,7 +87,7 @@ with the requisite scopes, via one of the OAuth flows described here:
 - https://dev.twitch.tv/docs/authentication/
 
 When you run the `init` program, it will open a browser window and prompt you for
-access. The code in [`authflow.go`](./internal/eventsub/authflow.go) implements the
+access. The code in [`authflow.go`](./internal/twitch/authflow.go) implements the
 client-side logic for this auth flow.
 
 ## Updating state

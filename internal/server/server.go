@@ -26,25 +26,23 @@ type Server struct {
 
 	q *queries.Queries
 
-	chat           *chat.Client
-	chatEventsChan <-chan *chat.Event
-	chatEvents     *subcriberChannels[*chat.Event]
+	chatAgent  *chat.Agent
+	chatEvents *subcriberChannels[*chat.LogEvent]
 
 	eventHandler *events.Handler
 	alerts       *subcriberChannels[*alerts.Alert]
 }
 
-func New(ctx context.Context, twitchConfig twitch.Config, twitchClient *helix.Client, channelUserId string, q *queries.Queries, chatClient *chat.Client, chatEventsChan chan *chat.Event) *Server {
+func New(ctx context.Context, twitchConfig twitch.Config, twitchClient *helix.Client, channelUserId string, q *queries.Queries, chatAgent *chat.Agent) *Server {
 	alertsChan := make(chan *alerts.Alert, 32)
 	s := &Server{
-		twitchConfig:   twitchConfig,
-		twitchClient:   twitchClient,
-		channelUserId:  channelUserId,
-		q:              q,
-		chat:           chatClient,
-		chatEventsChan: chatEventsChan,
-		chatEvents: &subcriberChannels[*chat.Event]{
-			chs: make(map[int]chan *chat.Event),
+		twitchConfig:  twitchConfig,
+		twitchClient:  twitchClient,
+		channelUserId: channelUserId,
+		q:             q,
+		chatAgent:     chatAgent,
+		chatEvents: &subcriberChannels[*chat.LogEvent]{
+			chs: make(map[int]chan *chat.LogEvent),
 		},
 		eventHandler: events.NewHandler(ctx, q, alertsChan),
 		alerts: &subcriberChannels[*alerts.Alert]{
@@ -74,7 +72,7 @@ func New(ctx context.Context, twitchConfig twitch.Config, twitchClient *helix.Cl
 			select {
 			case <-ctx.Done():
 				break
-			case event := <-s.chatEventsChan:
+			case event := <-s.chatAgent.GetLogEvents():
 				s.chatEvents.broadcast(event)
 			case alert := <-alertsChan:
 				s.alerts.broadcast(alert)
