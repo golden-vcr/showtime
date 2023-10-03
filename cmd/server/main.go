@@ -121,16 +121,23 @@ func main() {
 	}
 
 	// Clients can hit GET /chat to open an SSE connection into which we'll write chat
-	// log events. The chat.Agent sits in IRC chat and interprets messages, writing to
-	// an internal chat.LogEvent channel
-	chatAgent, err := chat.NewAgent(ctx, chat.NewLog(64), config.TwitchChannelName, time.Second)
-	if err != nil {
-		log.Fatalf("error initializing chat agent: %v", err)
-	}
-	defer chatAgent.Disconnect()
+	// log events
+	var getChatStatus health.GetChatStatusFunc
 	{
+		// The chat.Agent sits in IRC chat and interprets messages, writing to our
+		// logEventsChan whenever the chat log UI should be updated
+		logEventsChan := make(chan *chat.LogEvent, 32)
+		chatAgent, err := chat.NewAgent(ctx, 64, logEventsChan, config.TwitchChannelName, time.Second)
+		if err != nil {
+			log.Fatalf("error initializing chat agent: %v", err)
+		}
+		getChatStatus = func() error {
+			return chatAgent.GetStatus()
+		}
+		defer chatAgent.Disconnect()
+
 		// The sse.Handler exposes that LogEvent channel via an SSE endpoint
-		chatHandler := sse.NewHandler[*chat.LogEvent](ctx, chatAgent.GetLogEvents())
+		chatHandler := sse.NewHandler[*chat.LogEvent](ctx, logEventsChan)
 		r.Path("/chat").Methods("GET").Handler(chatHandler)
 	}
 
@@ -138,7 +145,7 @@ func main() {
 	// with the response certifying whether all EventSub subscriptions are enabled and
 	// the chat agent is connected to IRC
 	{
-		healthServer := health.NewServer(twitchClient, channelUserId, config.TwitchWebhookCallbackUrl, chatAgent)
+		healthServer := health.NewServer(twitchClient, channelUserId, config.TwitchWebhookCallbackUrl, getChatStatus)
 		r.Path("/").Methods("GET").Handler(healthServer)
 	}
 

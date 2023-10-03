@@ -6,7 +6,6 @@ import (
 	"net/http"
 
 	"github.com/golden-vcr/showtime"
-	"github.com/golden-vcr/showtime/internal/chat"
 	"github.com/golden-vcr/showtime/internal/events"
 	"github.com/nicklaw5/helix/v2"
 )
@@ -19,7 +18,7 @@ type Server struct {
 	getChatStatus   GetChatStatusFunc
 }
 
-func NewServer(client *helix.Client, channelUserId string, twitchWebhookCallbackUrl string, chatAgent *chat.Agent) *Server {
+func NewServer(client *helix.Client, channelUserId string, twitchWebhookCallbackUrl string, getChatStatus GetChatStatusFunc) *Server {
 	return &Server{
 		getEventsStatus: func() (error, error) {
 			return events.VerifySubscriptionStatus(
@@ -29,9 +28,7 @@ func NewServer(client *helix.Client, channelUserId string, twitchWebhookCallback
 				twitchWebhookCallbackUrl,
 			)
 		},
-		getChatStatus: func() error {
-			return chatAgent.GetStatus()
-		},
+		getChatStatus: getChatStatus,
 	}
 }
 

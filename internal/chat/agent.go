@@ -13,7 +13,9 @@ type Agent struct {
 	log        *Log
 }
 
-func NewAgent(ctx context.Context, log *Log, channelName string, connectTimeout time.Duration) (*Agent, error) {
+func NewAgent(ctx context.Context, logBufferSize int, logEventsChan chan<- *LogEvent, channelName string, connectTimeout time.Duration) (*Agent, error) {
+	log := NewLog(logBufferSize, logEventsChan)
+
 	client := irc.NewAnonymousClient()
 	client.OnPrivateMessage(log.handleMessage)
 	client.OnClearMessage(log.handleClearMessage)
@@ -37,10 +39,6 @@ func NewAgent(ctx context.Context, log *Log, channelName string, connectTimeout 
 
 func (a *Agent) GetStatus() error {
 	return a.connection.GetStatus()
-}
-
-func (a *Agent) GetLogEvents() <-chan *LogEvent {
-	return a.log.events
 }
 
 func (a *Agent) Disconnect() error {

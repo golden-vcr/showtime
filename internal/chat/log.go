@@ -7,13 +7,13 @@ import (
 )
 
 type Log struct {
-	events chan *LogEvent
+	events chan<- *LogEvent
 	buffer *messageBuffer
 }
 
-func NewLog(numMessagesToBuffer int) *Log {
+func NewLog(numMessagesToBuffer int, events chan<- *LogEvent) *Log {
 	return &Log{
-		events: make(chan *LogEvent, 32),
+		events: events,
 		buffer: newMessageBuffer(numMessagesToBuffer),
 	}
 }

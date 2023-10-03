@@ -10,7 +10,8 @@ import (
 )
 
 func Test_Log(t *testing.T) {
-	l := NewLog(16)
+	eventsChan := make(chan *LogEvent, 16)
+	l := NewLog(32, eventsChan)
 	assert.NotNil(t, l)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -21,7 +22,7 @@ func Test_Log(t *testing.T) {
 			select {
 			case <-ctx.Done():
 				break
-			case event := <-l.events:
+			case event := <-eventsChan:
 				events = append(events, event)
 			}
 		}
