@@ -13,6 +13,7 @@ import (
 	"github.com/golden-vcr/showtime/internal/alerts"
 	"github.com/golden-vcr/showtime/internal/chat"
 	"github.com/golden-vcr/showtime/internal/events"
+	"github.com/golden-vcr/showtime/internal/health"
 	"github.com/golden-vcr/showtime/internal/sse"
 	"github.com/golden-vcr/showtime/internal/twitch"
 )
@@ -50,7 +51,9 @@ func New(ctx context.Context, twitchConfig twitch.Config, twitchClient *helix.Cl
 	})
 
 	r := mux.NewRouter()
-	r.Path("/").Methods("GET").HandlerFunc(s.handleStatus)
+
+	healthServer := health.NewServer(twitchClient, channelUserId, twitchConfig.WebhookCallbackUrl, chatAgent)
+	r.Path("/").Methods("GET").Handler(healthServer)
 
 	eventsHandler := events.NewHandler(context.Background(), q, alertsChan)
 	eventsServer := events.NewServer(twitchConfig.WebhookSecret, eventsHandler)

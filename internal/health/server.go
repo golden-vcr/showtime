@@ -1,4 +1,4 @@
-package server
+package health
 
 import (
 	"encoding/json"
@@ -6,15 +6,36 @@ import (
 	"net/http"
 
 	"github.com/golden-vcr/showtime"
+	"github.com/golden-vcr/showtime/internal/chat"
 	"github.com/golden-vcr/showtime/internal/events"
+	"github.com/nicklaw5/helix/v2"
 )
 
-type Status struct {
-	IsReady bool   `json:"isReady"`
-	Message string `json:"message"`
+type GetEventsStatusFunc func() (error, error)
+type GetChatStatusFunc func() error
+
+type Server struct {
+	getEventsStatus GetEventsStatusFunc
+	getChatStatus   GetChatStatusFunc
 }
 
-func (s *Server) handleStatus(res http.ResponseWriter, req *http.Request) {
+func NewServer(client *helix.Client, channelUserId string, twitchWebhookCallbackUrl string, chatAgent *chat.Agent) *Server {
+	return &Server{
+		getEventsStatus: func() (error, error) {
+			return events.VerifySubscriptionStatus(
+				client,
+				showtime.RequiredSubscriptions,
+				channelUserId,
+				twitchWebhookCallbackUrl,
+			)
+		},
+		getChatStatus: func() error {
+			return chatAgent.GetStatus()
+		},
+	}
+}
+
+func (s *Server) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 	status := s.resolveStatus()
 	if err := json.NewEncoder(res).Encode(status); err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -22,7 +43,7 @@ func (s *Server) handleStatus(res http.ResponseWriter, req *http.Request) {
 }
 
 func (s *Server) resolveStatus() Status {
-	err, secondaryErr := events.VerifySubscriptionStatus(s.twitchClient, showtime.RequiredSubscriptions, s.channelUserId, s.twitchConfig.WebhookCallbackUrl)
+	err, secondaryErr := s.getEventsStatus()
 	if err != nil {
 		suffix := ""
 		if secondaryErr != nil {
@@ -34,8 +55,7 @@ func (s *Server) resolveStatus() Status {
 		}
 	}
 
-	// TODO: Maybe don't commingle notification status and chat status?
-	if err := s.chatAgent.GetStatus(); err != nil {
+	if err := s.getChatStatus(); err != nil {
 		return Status{
 			IsReady: false,
 			Message: fmt.Sprintf(
