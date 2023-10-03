@@ -1,7 +1,8 @@
-package server
+package events
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -10,10 +11,25 @@ import (
 	"github.com/nicklaw5/helix/v2"
 )
 
-type callbackPayload struct {
-	Subscription helix.EventSubSubscription `json:"subscription"`
-	Challenge    string                     `json:"challenge"`
-	Event        json.RawMessage            `json:"event"`
+type VerifyNotificationFunc func(header http.Header, message string) bool
+type HandleEventFunc func(ctx context.Context, subscription *helix.EventSubSubscription, data json.RawMessage) error
+
+type Server struct {
+	verifyNotification VerifyNotificationFunc
+	handleEvent        HandleEventFunc
+}
+
+func NewServer(twitchWebhookSecret string, eventHandler *Handler) *Server {
+	return &Server{
+		verifyNotification: func(header http.Header, message string) bool {
+			return helix.VerifyEventSubNotification(twitchWebhookSecret, header, message)
+		},
+		handleEvent: eventHandler.HandleEvent,
+	}
+}
+
+func (s *Server) ServeHTTP(res http.ResponseWriter, req *http.Request) {
+	s.handlePostCallback(res, req)
 }
 
 func (s *Server) handlePostCallback(res http.ResponseWriter, req *http.Request) {
@@ -27,14 +43,18 @@ func (s *Server) handlePostCallback(res http.ResponseWriter, req *http.Request) 
 	defer req.Body.Close()
 
 	// Verify that this event comes from Twitch: abort if phony
-	if !helix.VerifyEventSubNotification(s.twitchConfig.WebhookSecret, req.Header, string(body)) {
+	if !s.verifyNotification(req.Header, string(body)) {
 		fmt.Printf("Failed to verify signature from callback request\n")
 		http.Error(res, "Signature verification failed", http.StatusBadRequest)
 		return
 	}
 
-	// Decode the payload as JSON so we can examine the details of the event
-	var payload callbackPayload
+	// Decode the payload from JSON so we can examine the details of the event
+	var payload struct {
+		Subscription helix.EventSubSubscription `json:"subscription"`
+		Challenge    string                     `json:"challenge"`
+		Event        json.RawMessage            `json:"event"`
+	}
 	if err := json.NewDecoder(bytes.NewReader(body)).Decode(&payload); err != nil {
 		fmt.Printf("Failed to decode callback request body from JSON\n")
 		http.Error(res, err.Error(), http.StatusBadRequest)
@@ -57,7 +77,7 @@ func (s *Server) handlePostCallback(res http.ResponseWriter, req *http.Request) 
 	fmt.Printf("- %s\n", string(payload.Event))
 	res.WriteHeader(http.StatusOK)
 
-	if err := s.eventHandler.HandleEvent(req.Context(), &payload.Subscription, payload.Event); err != nil {
+	if err := s.handleEvent(req.Context(), &payload.Subscription, payload.Event); err != nil {
 		fmt.Printf("Failed to handle event of type '%s': %v\n", payload.Subscription.Type, err)
 	}
 }

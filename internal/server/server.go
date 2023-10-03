@@ -61,7 +61,10 @@ func New(ctx context.Context, twitchConfig twitch.Config, twitchClient *helix.Cl
 	r := mux.NewRouter()
 	r.Path("/").Methods("GET").HandlerFunc(s.handleStatus)
 
-	r.Path("/callback").Methods("POST").HandlerFunc(s.handlePostCallback)
+	eventsHandler := events.NewHandler(context.Background(), q, alertsChan)
+	eventsServer := events.NewServer(twitchConfig.WebhookSecret, eventsHandler)
+	r.Path("/callback").Methods("POST").Handler(eventsServer)
+
 	r.Path("/alerts").Methods("GET").HandlerFunc(s.handleAlerts)
 	r.Path("/chat").Methods("GET").HandlerFunc(s.handleChat)
 	r.Path("/view").Methods("GET").HandlerFunc(s.handleView)
