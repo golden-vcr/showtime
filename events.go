@@ -16,6 +16,20 @@ var RequiredSubscriptions = []events.RequiredSubscription{
 		},
 	},
 	{
+		Type:    helix.EventSubTypeStreamOnline,
+		Version: "1",
+		TemplatedCondition: helix.EventSubCondition{
+			BroadcasterUserID: "{{.ChannelUserId}}",
+		},
+	},
+	{
+		Type:    helix.EventSubTypeStreamOffline,
+		Version: "1",
+		TemplatedCondition: helix.EventSubCondition{
+			BroadcasterUserID: "{{.ChannelUserId}}",
+		},
+	},
+	{
 		Type:    helix.EventSubTypeChannelFollow,
 		Version: "2",
 		TemplatedCondition: helix.EventSubCondition{
