@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -13,13 +14,18 @@ import (
 	"time"
 
 	"github.com/codingconcepts/env"
+	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
+	"github.com/rs/cors"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/golden-vcr/showtime/gen/queries"
+	"github.com/golden-vcr/showtime/internal/alerts"
 	"github.com/golden-vcr/showtime/internal/chat"
-	"github.com/golden-vcr/showtime/internal/server"
+	"github.com/golden-vcr/showtime/internal/events"
+	"github.com/golden-vcr/showtime/internal/health"
+	"github.com/golden-vcr/showtime/internal/sse"
 	"github.com/golden-vcr/showtime/internal/twitch"
 )
 
@@ -53,17 +59,7 @@ func main() {
 		log.Fatalf("error loading config: %v", err)
 	}
 
-	// TODO: Embed in top-level Config struct
-	twitchConfig := twitch.Config{
-		ChannelName:        config.TwitchChannelName,
-		ClientId:           config.TwitchClientId,
-		ClientSecret:       config.TwitchClientSecret,
-		ExtensionClientId:  config.TwitchExtensionClientId,
-		WebhookCallbackUrl: config.TwitchWebhookCallbackUrl,
-		WebhookSecret:      config.TwitchWebhookSecret,
-	}
-
-	// Shut down cleanly on
+	// Shut down cleanly on signal
 	ctx, close := signal.NotifyContext(context.Background(), os.Interrupt, os.Kill, syscall.SIGTERM)
 	defer close()
 
@@ -88,36 +84,103 @@ func main() {
 	}
 	q := queries.New(db)
 
-	//
-	twitchClient, err := twitch.NewClientWithAppToken(twitchConfig.ClientId, twitchConfig.ClientSecret)
+	// Prepare a Twitch client and use it to get the user ID for the configured channel,
+	// so we can identify the broadcaster
+	twitchClient, err := twitch.NewClientWithAppToken(config.TwitchClientId, config.TwitchClientSecret)
 	if err != nil {
 		log.Fatalf("error initializing Twitch API client: %v", err)
 	}
-	channelUserId, err := twitch.GetChannelUserId(twitchClient, twitchConfig.ChannelName)
+	channelUserId, err := twitch.GetChannelUserId(twitchClient, config.TwitchChannelName)
 	if err != nil {
 		log.Fatalf("error getting Twitch channel user ID: %v", err)
 	}
 
-	// Create a chat.Agent which will listen to IRC chat and expose a stream of
-	// chat.LogEvent via a channel
+	// Start setting up our HTTP handlers, using gorilla/mux for routing
+	r := mux.NewRouter()
+
+	// Clients can hit GET /alerts to receive notifications in response to follows,
+	// raids, etc.: these are largely initiated in response to Twitch EventSub callbacks
+	{
+		// events.Handler gets called in response to EventSub notifications, and
+		// whenever it decides that we should broadcast an alert, it write a new
+		// alert.Alert into alertsChan
+		alertsChan := make(chan *alerts.Alert, 32)
+		eventsHandler := events.NewHandler(ctx, q, alertsChan)
+
+		// events.Server implements the POST callback that Twitch hits (once we've run
+		// cmd/init/main.go to create all EventSub notifications mandated by events.go)
+		// in order to let us know when relevant events occur on Twitch: it responds by
+		// sending those events to the events.Handler
+		eventsServer := events.NewServer(config.TwitchWebhookSecret, eventsHandler)
+		r.Path("/callback").Methods("POST").Handler(eventsServer)
+
+		// The sse.Handler exposes our Alert channel via an SSE endpoint, notifying HTTP
+		// clients whenever a Twitch-initiated event results in a new alert
+		alertsHandler := sse.NewHandler[*alerts.Alert](ctx, alertsChan)
+		r.Path("/alerts").Methods("GET").Handler(alertsHandler)
+	}
+
+	// Clients can hit GET /chat to open an SSE connection into which we'll write chat
+	// log events. The chat.Agent sits in IRC chat and interprets messages, writing to
+	// an internal chat.LogEvent channel
 	chatAgent, err := chat.NewAgent(ctx, chat.NewLog(64), config.TwitchChannelName, time.Second)
 	if err != nil {
 		log.Fatalf("error initializing chat agent: %v", err)
 	}
 	defer chatAgent.Disconnect()
+	{
+		// The sse.Handler exposes that LogEvent channel via an SSE endpoint
+		chatHandler := sse.NewHandler[*chat.LogEvent](ctx, chatAgent.GetLogEvents())
+		r.Path("/chat").Methods("GET").Handler(chatHandler)
+	}
 
-	// Initialize our HTTP server, which glues all of the above into a coherent set of
-	// endpoints for clients to call
-	srv := server.New(
-		ctx,
-		twitchConfig,
-		twitchClient,
-		channelUserId,
-		q,
-		chatAgent,
-	)
+	// Clients can hit GET / to get the health of the Golden VCR Twitch integration,
+	// with the response certifying whether all EventSub subscriptions are enabled and
+	// the chat agent is connected to IRC
+	{
+		healthServer := health.NewServer(twitchClient, channelUserId, config.TwitchWebhookCallbackUrl, chatAgent)
+		r.Path("/").Methods("GET").Handler(healthServer)
+	}
+
+	// GET /view exposes the currently-selected tape ID (WIP)
+	{
+		handleView := func(res http.ResponseWriter, req *http.Request) {
+			// Look up the current tape ID, defaulting to "" if no tape change has ever been
+			// recorded
+			tapeId, err := q.GetCurrentTapeId(req.Context())
+			if err == sql.ErrNoRows {
+				tapeId = ""
+			} else if err != nil {
+				fmt.Printf("Error getting tape ID: %v\n", err)
+				http.Error(res, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			// Respond with our current state
+			type State struct {
+				TapeId string `json:"tapeId"`
+			}
+			state := &State{
+				TapeId: tapeId,
+			}
+			if err := json.NewEncoder(res).Encode(state); err != nil {
+				http.Error(res, err.Error(), http.StatusInternalServerError)
+			}
+		}
+		r.Path("/view").Methods("GET").HandlerFunc(handleView)
+	}
+
+	// Inject CORS support, since some of these APIs need to be called from the Golden
+	// VCR extension, which is hosted by Twitch
+	withCors := cors.New(cors.Options{
+		AllowedOrigins: []string{
+			"https://localhost:8080",
+			fmt.Sprintf("https://%s.ext-twitch.tv", config.TwitchExtensionClientId),
+		},
+		AllowedMethods: []string{http.MethodGet},
+	})
 	addr := fmt.Sprintf("%s:%d", config.BindAddr, config.ListenPort)
-	server := &http.Server{Addr: addr, Handler: srv}
+	server := &http.Server{Addr: addr, Handler: withCors.Handler(r)}
 
 	// Handle incoming HTTP connections until our top-level context is canceled, at
 	// which point shut down cleanyl
