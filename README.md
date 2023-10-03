@@ -113,3 +113,10 @@ Once your `.env` file is populated, you should be able to build and run the serv
 
 If successful, you should be able to run `curl http://localhost:5001/status` and
 receive a response.
+
+To simulate Twitch EventSub events when running locally, run the `simulate` command,
+e.g.:
+
+- `go run cmd/simulate/main.go stream.online`
+- `go run cmd/simulate/main.go channel.follow`
+- `go run cmd/simulate/main.go stream.offline`
