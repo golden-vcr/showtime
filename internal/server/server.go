@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"sync"
 
 	"github.com/gorilla/mux"
 	"github.com/nicklaw5/helix/v2"
@@ -14,6 +13,7 @@ import (
 	"github.com/golden-vcr/showtime/internal/alerts"
 	"github.com/golden-vcr/showtime/internal/chat"
 	"github.com/golden-vcr/showtime/internal/events"
+	"github.com/golden-vcr/showtime/internal/sse"
 	"github.com/golden-vcr/showtime/internal/twitch"
 )
 
@@ -26,11 +26,8 @@ type Server struct {
 
 	q *queries.Queries
 
-	chatAgent  *chat.Agent
-	chatEvents *subcriberChannels[*chat.LogEvent]
-
+	chatAgent    *chat.Agent
 	eventHandler *events.Handler
-	alerts       *subcriberChannels[*alerts.Alert]
 }
 
 func New(ctx context.Context, twitchConfig twitch.Config, twitchClient *helix.Client, channelUserId string, q *queries.Queries, chatAgent *chat.Agent) *Server {
@@ -41,13 +38,7 @@ func New(ctx context.Context, twitchConfig twitch.Config, twitchClient *helix.Cl
 		channelUserId: channelUserId,
 		q:             q,
 		chatAgent:     chatAgent,
-		chatEvents: &subcriberChannels[*chat.LogEvent]{
-			chs: make(map[int]chan *chat.LogEvent),
-		},
-		eventHandler: events.NewHandler(ctx, q, alertsChan),
-		alerts: &subcriberChannels[*alerts.Alert]{
-			chs: make(map[int]chan *alerts.Alert),
-		},
+		eventHandler:  events.NewHandler(ctx, q, alertsChan),
 	}
 
 	withCors := cors.New(cors.Options{
@@ -65,55 +56,14 @@ func New(ctx context.Context, twitchConfig twitch.Config, twitchClient *helix.Cl
 	eventsServer := events.NewServer(twitchConfig.WebhookSecret, eventsHandler)
 	r.Path("/callback").Methods("POST").Handler(eventsServer)
 
-	r.Path("/alerts").Methods("GET").HandlerFunc(s.handleAlerts)
-	r.Path("/chat").Methods("GET").HandlerFunc(s.handleChat)
+	chatHandler := sse.NewHandler[*chat.LogEvent](ctx, s.chatAgent.GetLogEvents())
+	r.Path("/chat").Methods("GET").Handler(chatHandler)
+
+	alertsHandler := sse.NewHandler[*alerts.Alert](ctx, alertsChan)
+	r.Path("/alerts").Methods("GET").Handler(alertsHandler)
+
 	r.Path("/view").Methods("GET").HandlerFunc(s.handleView)
 	s.Handler = withCors.Handler(r)
 
-	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-				break
-			case event := <-s.chatAgent.GetLogEvents():
-				s.chatEvents.broadcast(event)
-			case alert := <-alertsChan:
-				s.alerts.broadcast(alert)
-			}
-		}
-	}()
-
 	return s
-}
-
-type subcriberChannels[T any] struct {
-	chs        map[int]chan T
-	mu         sync.RWMutex
-	nextHandle int
-}
-
-func (s *subcriberChannels[T]) register(ch chan T) int {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	handle := s.nextHandle
-	s.chs[handle] = ch
-	s.nextHandle++
-	return handle
-}
-
-func (s *subcriberChannels[T]) unregister(handle int) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	delete(s.chs, handle)
-}
-
-func (s *subcriberChannels[T]) broadcast(message T) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	for _, ch := range s.chs {
-		ch <- message
-	}
 }
