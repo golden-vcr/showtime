@@ -158,7 +158,7 @@ func main() {
 	// broadcaster should be permitted to get data from this endpoint
 	{
 		authClient := auth.NewClient(config.AuthURL)
-		adminServer := &admin.Server{}
+		adminServer := admin.NewServer(q)
 		adminServer.RegisterRoutes(authClient, r.PathPrefix("/admin").Subrouter())
 	}
 
