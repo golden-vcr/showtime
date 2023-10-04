@@ -120,3 +120,16 @@ e.g.:
 - `go run cmd/simulate/main.go stream.online`
 - `go run cmd/simulate/main.go channel.follow`
 - `go run cmd/simulate/main.go stream.offline`
+
+## Auth dependency
+
+Note that in order to call endpoints that require authorization, you'll need to be
+running the [auth](https://github.com/golden-vcr/auth) API locally as well. By default,
+**showtime** is configured to reach the auth server via its default URL of
+`http://localhost:5002`, so it's sufficient to simply `go run cmd/server/main.go` from
+both repos.
+
+In production, **showtime** and **auth** currently run alongside each other on a single
+DigitalOcean droplet, with auth listening on 5002, so no further configuration is
+necessary. If we scale up beyond a single host, then showtime should be configured with
+an appropriate `AUTH_URL` value to hit the production auth server.

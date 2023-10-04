@@ -20,7 +20,9 @@ import (
 	"github.com/rs/cors"
 	"golang.org/x/sync/errgroup"
 
+	"github.com/golden-vcr/auth"
 	"github.com/golden-vcr/showtime/gen/queries"
+	"github.com/golden-vcr/showtime/internal/admin"
 	"github.com/golden-vcr/showtime/internal/alerts"
 	"github.com/golden-vcr/showtime/internal/chat"
 	"github.com/golden-vcr/showtime/internal/events"
@@ -39,6 +41,8 @@ type Config struct {
 	TwitchExtensionClientId  string `env:"TWITCH_EXTENSION_CLIENT_ID" required:"true"`
 	TwitchWebhookCallbackUrl string `env:"TWITCH_WEBHOOK_CALLBACK_URL" default:"https://goldenvcr.com/api/showtime/callback"`
 	TwitchWebhookSecret      string `env:"TWITCH_WEBHOOK_SECRET" required:"true"`
+
+	AuthURL string `env:"AUTH_URL" default:"http://localhost:5002"`
 
 	DatabaseHost     string `env:"PGHOST" required:"true"`
 	DatabasePort     int    `env:"PGPORT" required:"true"`
@@ -149,6 +153,16 @@ func main() {
 		r.Path("/").Methods("GET").Handler(healthServer)
 	}
 
+	// GET /admin/secrets is a temporary test endpoint that we can use to verify that
+	// our new access control code (using the auth API) is working as intended: only the
+	// broadcaster should be permitted to get data from this endpoint
+	{
+		authClient := auth.NewClient(config.AuthURL)
+		adminServer := &admin.Server{}
+		sr := r.PathPrefix("/admin").Subrouter()
+		sr.Path("/secrets").Methods("GET").Handler(auth.RequireAccess(authClient, auth.RoleBroadcaster, adminServer))
+	}
+
 	// GET /view exposes the currently-selected tape ID (WIP)
 	{
 		handleView := func(res http.ResponseWriter, req *http.Request) {
@@ -190,7 +204,7 @@ func main() {
 	server := &http.Server{Addr: addr, Handler: withCors.Handler(r)}
 
 	// Handle incoming HTTP connections until our top-level context is canceled, at
-	// which point shut down cleanyl
+	// which point shut down cleanly
 	fmt.Printf("Listening on %s...\n", addr)
 	var wg errgroup.Group
 	wg.Go(server.ListenAndServe)
