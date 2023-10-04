@@ -159,8 +159,7 @@ func main() {
 	{
 		authClient := auth.NewClient(config.AuthURL)
 		adminServer := &admin.Server{}
-		sr := r.PathPrefix("/admin").Subrouter()
-		sr.Path("/secrets").Methods("GET").Handler(auth.RequireAccess(authClient, auth.RoleBroadcaster, adminServer))
+		adminServer.RegisterRoutes(authClient, r.PathPrefix("/admin").Subrouter())
 	}
 
 	// GET /view exposes the currently-selected tape ID (WIP)

@@ -6,11 +6,22 @@ import (
 	"strings"
 
 	"github.com/golden-vcr/auth"
+	"github.com/gorilla/mux"
 )
 
 type Server struct{}
 
-func (s *Server) ServeHTTP(res http.ResponseWriter, req *http.Request) {
+func (s *Server) RegisterRoutes(c auth.Client, r *mux.Router) {
+	// Require broadcaster access for all admin routes
+	r.Use(func(next http.Handler) http.Handler {
+		return auth.RequireAccess(c, auth.RoleBroadcaster, next)
+	})
+
+	// GET /secrets is a dummy endpoint for testing
+	r.Path("/secrets").Methods("GET").HandlerFunc(s.handleGetSecrets)
+}
+
+func (s *Server) handleGetSecrets(res http.ResponseWriter, req *http.Request) {
 	// Parse claims that were resolved by our auth client's middleware
 	claims, err := auth.GetClaims(req)
 	if err != nil {
