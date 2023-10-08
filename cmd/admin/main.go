@@ -5,10 +5,10 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
-	"net/url"
 	"os"
 
 	"github.com/codingconcepts/env"
+	"github.com/golden-vcr/server-common/db"
 	"github.com/golden-vcr/showtime/gen/queries"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
@@ -35,7 +35,7 @@ func main() {
 	}
 
 	// Construct a postgres connection string from our config
-	connectionString := formatConnectionString(
+	connectionString := db.FormatConnectionString(
 		config.DatabaseHost,
 		config.DatabasePort,
 		config.DatabaseName,
@@ -85,13 +85,4 @@ func main() {
 			}
 		}
 	}
-}
-
-func formatConnectionString(host string, port int, dbname string, user string, password string, sslmode string) string {
-	urlencodedPassword := url.QueryEscape(password)
-	s := fmt.Sprintf("postgres://%s:%s@%s:%d/%s", user, urlencodedPassword, host, port, dbname)
-	if sslmode != "" {
-		s += fmt.Sprintf("?sslmode=%s", sslmode)
-	}
-	return s
 }

@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"net/url"
 	"os"
 	"os/signal"
 	"syscall"
@@ -21,6 +20,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/golden-vcr/auth"
+	"github.com/golden-vcr/server-common/db"
 	"github.com/golden-vcr/showtime/gen/queries"
 	"github.com/golden-vcr/showtime/internal/admin"
 	"github.com/golden-vcr/showtime/internal/alerts"
@@ -70,7 +70,7 @@ func main() {
 	// Configure our database connection and initialize a Queries struct, so we can read
 	// and write to the 'showtime' schema in response to HTTP requests, EventSub
 	// notifications, etc.
-	connectionString := formatConnectionString(
+	connectionString := db.FormatConnectionString(
 		config.DatabaseHost,
 		config.DatabasePort,
 		config.DatabaseName,
@@ -220,13 +220,4 @@ func main() {
 	} else {
 		log.Fatalf("error running server: %v", err)
 	}
-}
-
-func formatConnectionString(host string, port int, dbname string, user string, password string, sslmode string) string {
-	urlencodedPassword := url.QueryEscape(password)
-	s := fmt.Sprintf("postgres://%s:%s@%s:%d/%s", user, urlencodedPassword, host, port, dbname)
-	if sslmode != "" {
-		s += fmt.Sprintf("?sslmode=%s", sslmode)
-	}
-	return s
 }

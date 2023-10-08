@@ -6,10 +6,10 @@ github.com/gempir/go-twitch-irc/v4 v4.0.0 h1:sHVIvbWOv9nHXGEErilclxASv0AaQEr/r/f
 github.com/gempir/go-twitch-irc/v4 v4.0.0/go.mod h1:QsOMMAk470uxQ7EYD9GJBGAVqM/jDrXBNbuePfTauzg=
 github.com/golang-jwt/jwt/v4 v4.0.0 h1:RAqyYixv1p7uEnocuy8P1nru5wprCh/MH2BIlW5z5/o=
 github.com/golang-jwt/jwt/v4 v4.0.0/go.mod h1:/xlHOz8bRuivTWchD4jCa+NbatV+wEUSzwAxVc6locg=
-github.com/golden-vcr/auth v0.0.0-20231004170151-3d439c68cfd3 h1:Y3sa1+5yIyLm1GaF5sADJr28JAhh3jbveMt8LyxzcrQ=
-github.com/golden-vcr/auth v0.0.0-20231004170151-3d439c68cfd3/go.mod h1:MPiE5ypd/2MkgJr9PrAw7aKLj5qo6ZxgqpL5gHdZTRQ=
 github.com/golden-vcr/auth v0.0.0-20231004185657-7a3840bd7077 h1:LzgxElw1SxoXPj3z/lvOYXFycvhYqKXeKfyFvmAsqxs=
 github.com/golden-vcr/auth v0.0.0-20231004185657-7a3840bd7077/go.mod h1:MPiE5ypd/2MkgJr9PrAw7aKLj5qo6ZxgqpL5gHdZTRQ=
+github.com/golden-vcr/server-common v0.0.0-20231008160834-a3155a36e1c0 h1:EFEsGdvHqpW/u9zyoyzQyNwPRMRu7NMmRPPB6mUHXaM=
+github.com/golden-vcr/server-common v0.0.0-20231008160834-a3155a36e1c0/go.mod h1:+ldkAOYcd0cMM5gSbgoEyn8wf8LF4PdaFdHnjyVamtk=
 github.com/google/uuid v1.3.1 h1:KjJaJ9iWZ3jOFZIf1Lqf4laDRCasjl0BCmnEGxkdLb4=
 github.com/google/uuid v1.3.1/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
 github.com/gorilla/mux v1.8.0 h1:i40aqfkR1h2SlN9hojwV5ZA91wcXFOvkdNIeFDP5koI=
