@@ -90,21 +90,6 @@ When you run the `init` program, it will open a browser window and prompt you fo
 access. The code in [`authflow.go`](./internal/twitch/authflow.go) implements the
 client-side logic for this auth flow.
 
-## Updating state
-
-There is currently no API for performing administrative tasks: instead, you need to run
-an `admin` command that's implemented in [`cmd/admin/main.go`](./cmd/admin/main.go).
-
-To change the currently selected tape:
-
-- `go run cmd/admin/main.go set-tape <tape-id>`
-
-To clear the current tape:
-
-- `go run cmd/admin/main.go clear-tape`
-
-Running without arguments will print the currently selected tape.
-
 ## Running
 
 Once your `.env` file is populated, you should be able to build and run the server:
