@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -167,9 +168,9 @@ func main() {
 		handleView := func(res http.ResponseWriter, req *http.Request) {
 			// Look up the current tape ID, defaulting to "" if no tape change has ever been
 			// recorded
-			tapeId, err := q.GetCurrentTapeId(req.Context())
-			if err == sql.ErrNoRows {
-				tapeId = ""
+			tapeIdAsInt, err := q.GetCurrentTapeId(req.Context())
+			if errors.Is(err, sql.ErrNoRows) {
+				tapeIdAsInt = -1
 			} else if err != nil {
 				fmt.Printf("Error getting tape ID: %v\n", err)
 				http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -181,7 +182,10 @@ func main() {
 				TapeId string `json:"tapeId"`
 			}
 			state := &State{
-				TapeId: tapeId,
+				TapeId: "",
+			}
+			if tapeIdAsInt > 0 {
+				state.TapeId = fmt.Sprintf("%d", tapeIdAsInt)
 			}
 			if err := json.NewEncoder(res).Encode(state); err != nil {
 				http.Error(res, err.Error(), http.StatusInternalServerError)

@@ -19,12 +19,16 @@ type ShowtimeBroadcast struct {
 	EndedAt sql.NullTime
 }
 
-// Records the fact that a new tape was set as current (or the current tape was cleared).
-type ShowtimeTapeChange struct {
-	// Timestamp at which the tape change occurred.
-	CreatedAt time.Time
-	// ID of the tape that was set as current (if non-empty), or empty string to indicate that the current tape was cleared.
-	TapeID string
+// Records the fact that a particular tape was played during a broadcast.
+type ShowtimeScreening struct {
+	// ID of the broadcast that was live at the time the screening started.
+	BroadcastID int32
+	// ID of the tape that was screened.
+	TapeID int32
+	// Time at which the screening started.
+	StartedAt time.Time
+	// Time at which the screening ended, if it's not stil ongoing.
+	EndedAt sql.NullTime
 }
 
 // Details about a user who has interacted with Golden VCR at some point, either directly via goldenvcr.com or via Twitch.

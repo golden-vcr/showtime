@@ -1,7 +1,10 @@
 package admin
 
 import (
+	"database/sql"
+	"errors"
 	"net/http"
+	"strconv"
 
 	"github.com/golden-vcr/auth"
 	"github.com/golden-vcr/showtime/gen/queries"
@@ -31,20 +34,53 @@ func (s *Server) RegisterRoutes(c auth.Client, r *mux.Router) {
 }
 
 func (s *Server) handleSetTape(res http.ResponseWriter, req *http.Request) {
-	tapeId, ok := mux.Vars(req)["id"]
-	if !ok || tapeId == "" {
+	// Figure out which tape we want to screen
+	tapeIdStr, ok := mux.Vars(req)["id"]
+	if !ok || tapeIdStr == "" {
 		http.Error(res, "failed to parse 'id' from URL", http.StatusInternalServerError)
 		return
 	}
-	if err := s.q.SetTapeId(req.Context(), tapeId); err != nil {
+	tapeId, err := strconv.Atoi(tapeIdStr)
+	if err != nil {
+		http.Error(res, "tape ID must be an integer", http.StatusBadRequest)
+	}
+
+	// Resolve the ID of the current broadcast, if it's live (i.e. not ended)
+	broadcast, err := s.q.GetMostRecentBroadcast(req.Context())
+	if errors.Is(err, sql.ErrNoRows) || (err == nil && broadcast.EndedAt.Valid) {
+		http.Error(res, "no broadcast is currently live", http.StatusBadRequest)
+		return
+	}
+	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	res.WriteHeader(http.StatusNoContent)
+
+	// Create a screening record for this tape in this broadcast
+	if err := s.q.RecordScreeningStarted(req.Context(), queries.RecordScreeningStartedParams{
+		BroadcastID: broadcast.ID,
+		TapeID:      int32(tapeId),
+	}); err != nil {
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
 }
 
 func (s *Server) handleClearTape(res http.ResponseWriter, req *http.Request) {
-	if err := s.q.ClearTapeId(req.Context()); err != nil {
+	// Resolve the ID of the current broadcast, if it's live (i.e. not ended)
+	broadcast, err := s.q.GetMostRecentBroadcast(req.Context())
+	if errors.Is(err, sql.ErrNoRows) || (err == nil && broadcast.EndedAt.Valid) {
+		http.Error(res, "no broadcast is currently live", http.StatusBadRequest)
+		return
+	}
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Set ended_at timestamps on all screening records for that broadcast that are not
+	// already ended
+	if err := s.q.RecordScreeningEnded(req.Context(), broadcast.ID); err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
