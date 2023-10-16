@@ -57,6 +57,12 @@ func (s *Server) handleSetTape(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	// Automatically end any prior screenings that are still active in this broadcast
+	if err := s.q.RecordScreeningEnded(req.Context(), broadcast.ID); err != nil {
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	// Create a screening record for this tape in this broadcast
 	if err := s.q.RecordScreeningStarted(req.Context(), queries.RecordScreeningStartedParams{
 		BroadcastID: broadcast.ID,
@@ -65,6 +71,7 @@ func (s *Server) handleSetTape(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	res.WriteHeader(http.StatusNoContent)
 }
 
 func (s *Server) handleClearTape(res http.ResponseWriter, req *http.Request) {
