@@ -6,7 +6,7 @@ require (
 	github.com/codingconcepts/env v0.0.0-20200821220118-a8fbf8d84482
 	github.com/gempir/go-twitch-irc/v4 v4.0.0
 	github.com/golden-vcr/auth v0.0.0-20231004185657-7a3840bd7077
-	github.com/golden-vcr/server-common v0.0.0-20231008160834-a3155a36e1c0
+	github.com/golden-vcr/server-common v0.2.0
 	github.com/google/uuid v1.3.1
 	github.com/gorilla/mux v1.8.0
 	github.com/joho/godotenv v1.5.1
