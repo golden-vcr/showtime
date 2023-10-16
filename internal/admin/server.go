@@ -43,6 +43,7 @@ func (s *Server) handleSetTape(res http.ResponseWriter, req *http.Request) {
 	tapeId, err := strconv.Atoi(tapeIdStr)
 	if err != nil {
 		http.Error(res, "tape ID must be an integer", http.StatusBadRequest)
+		return
 	}
 
 	// Resolve the ID of the current broadcast, if it's live (i.e. not ended)
