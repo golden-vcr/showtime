@@ -80,7 +80,7 @@ func (l *ChangeListener) initialize(ctx context.Context, q Queries) error {
 		l.lastKnownBroadcastStartedAt = broadcast.StartedAt
 		if !broadcast.EndedAt.Valid {
 			l.state.IsLive = true
-			l.state.BroadcastStartedAt = broadcast.StartedAt
+			l.state.BroadcastStartedAt = &broadcast.StartedAt
 
 			screening, err := q.GetMostRecentScreening(ctx, broadcast.ID)
 			if err != nil && !errors.Is(err, sql.ErrNoRows) {
@@ -90,7 +90,7 @@ func (l *ChangeListener) initialize(ctx context.Context, q Queries) error {
 				l.lastKnownScreeningStartedAt = screening.StartedAt
 				if !screening.EndedAt.Valid {
 					l.state.ScreeningTapeId = int(screening.TapeID)
-					l.state.ScreeningStartedAt = screening.StartedAt
+					l.state.ScreeningStartedAt = &screening.StartedAt
 				}
 			}
 		}
@@ -110,7 +110,7 @@ func (l *ChangeListener) handleBroadcastChange(data *BroadcastEventData) {
 	} else {
 		l.updateState(&State{
 			IsLive:             true,
-			BroadcastStartedAt: data.StartedAt,
+			BroadcastStartedAt: &data.StartedAt,
 		})
 	}
 }
@@ -130,14 +130,14 @@ func (l *ChangeListener) handleScreeningChange(data *ScreeningEventData) {
 	if data.EndedAt != nil {
 		l.updateState(&State{
 			IsLive:             true,
-			BroadcastStartedAt: l.lastKnownBroadcastStartedAt,
+			BroadcastStartedAt: &l.lastKnownBroadcastStartedAt,
 		})
 	} else {
 		l.updateState(&State{
 			IsLive:             true,
-			BroadcastStartedAt: l.lastKnownBroadcastStartedAt,
+			BroadcastStartedAt: &l.lastKnownBroadcastStartedAt,
 			ScreeningTapeId:    data.TapeId,
-			ScreeningStartedAt: data.StartedAt,
+			ScreeningStartedAt: &data.StartedAt,
 		})
 	}
 }
