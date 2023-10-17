@@ -18,7 +18,8 @@ type ChangeListener struct {
 	lastKnownBroadcastStartedAt time.Time
 	lastKnownScreeningStartedAt time.Time
 
-	state State
+	state        State
+	stateChanges chan State
 }
 
 func NewChangeListener(ctx context.Context, pql *pq.Listener, q Queries) (*ChangeListener, error) {
@@ -26,12 +27,20 @@ func NewChangeListener(ctx context.Context, pql *pq.Listener, q Queries) (*Chang
 	if err != nil {
 		return nil, err
 	}
-	l := &ChangeListener{pql: pql}
+	l := &ChangeListener{pql: pql, stateChanges: make(chan State)}
 	if err := l.initialize(ctx, q); err != nil {
 		return nil, err
 	}
 	fmt.Printf("STATE INIT: %+v\n", l.state)
 	return l, nil
+}
+
+func (l *ChangeListener) GetState() State {
+	return l.state
+}
+
+func (l *ChangeListener) GetStateChanges() <-chan State {
+	return l.stateChanges
 }
 
 func (l *ChangeListener) Run(ctx context.Context) error {
@@ -145,4 +154,5 @@ func (l *ChangeListener) handleScreeningChange(data *ScreeningEventData) {
 func (l *ChangeListener) updateState(state *State) {
 	fmt.Printf("STATE CHANGE: %+v\n", state)
 	l.state = *state
+	l.stateChanges <- *state
 }

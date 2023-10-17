@@ -194,6 +194,16 @@ func main() {
 		adminServer.RegisterRoutes(authClient, r.PathPrefix("/admin").Subrouter())
 	}
 
+	// GET /state provides clients with real-time information about the current state of
+	// the broadcast: whether we've live, what tape is being screened, etc.
+	{
+		stateHandler := sse.NewHandler(ctx, changeListener.GetStateChanges())
+		stateHandler.OnConnectEventFunc = func() broadcast.State {
+			return changeListener.GetState()
+		}
+		r.Path("/state").Methods("GET").Handler(stateHandler)
+	}
+
 	// GET /view exposes the currently-selected tape ID (WIP)
 	{
 		handleView := func(res http.ResponseWriter, req *http.Request) {
