@@ -7,6 +7,8 @@ package queries
 
 import (
 	"context"
+	"database/sql"
+	"time"
 )
 
 const getCurrentTapeId = `-- name: GetCurrentTapeId :one
@@ -28,6 +30,30 @@ func (q *Queries) GetCurrentTapeId(ctx context.Context) (int32, error) {
 	var tape_id int32
 	err := row.Scan(&tape_id)
 	return tape_id, err
+}
+
+const getMostRecentScreening = `-- name: GetMostRecentScreening :one
+select
+    screening.tape_id,
+    screening.started_at,
+    screening.ended_at
+from showtime.screening
+where screening.broadcast_id = $1
+order by screening.started_at desc
+limit 1
+`
+
+type GetMostRecentScreeningRow struct {
+	TapeID    int32
+	StartedAt time.Time
+	EndedAt   sql.NullTime
+}
+
+func (q *Queries) GetMostRecentScreening(ctx context.Context, broadcastID int32) (GetMostRecentScreeningRow, error) {
+	row := q.db.QueryRowContext(ctx, getMostRecentScreening, broadcastID)
+	var i GetMostRecentScreeningRow
+	err := row.Scan(&i.TapeID, &i.StartedAt, &i.EndedAt)
+	return i, err
 }
 
 const recordScreeningEnded = `-- name: RecordScreeningEnded :exec

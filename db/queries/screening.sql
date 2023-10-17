@@ -1,3 +1,13 @@
+-- name: GetMostRecentScreening :one
+select
+    screening.tape_id,
+    screening.started_at,
+    screening.ended_at
+from showtime.screening
+where screening.broadcast_id = sqlc.arg('broadcast_id')
+order by screening.started_at desc
+limit 1;
+
 -- name: RecordScreeningStarted :exec
 insert into showtime.screening (
     broadcast_id,
