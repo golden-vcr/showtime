@@ -239,7 +239,7 @@ func main() {
 	// VCR extension, which is hosted by Twitch
 	withCors := cors.New(cors.Options{
 		AllowedOrigins: []string{
-			"https://localhost:8080",
+			"https://localhost:5180",
 			fmt.Sprintf("https://%s.ext-twitch.tv", config.TwitchExtensionClientId),
 		},
 		AllowedMethods: []string{http.MethodGet},
