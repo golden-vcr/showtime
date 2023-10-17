@@ -16,7 +16,7 @@ import (
 	"github.com/codingconcepts/env"
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
-	_ "github.com/lib/pq"
+	"github.com/lib/pq"
 	"github.com/rs/cors"
 	"golang.org/x/sync/errgroup"
 
@@ -25,6 +25,7 @@ import (
 	"github.com/golden-vcr/showtime/gen/queries"
 	"github.com/golden-vcr/showtime/internal/admin"
 	"github.com/golden-vcr/showtime/internal/alerts"
+	"github.com/golden-vcr/showtime/internal/broadcast"
 	"github.com/golden-vcr/showtime/internal/chat"
 	"github.com/golden-vcr/showtime/internal/events"
 	"github.com/golden-vcr/showtime/internal/health"
@@ -88,6 +89,36 @@ func main() {
 		log.Fatalf("error connecting to database: %v", err)
 	}
 	q := queries.New(db)
+
+	// Using the same connection string, prepare a broadcast.ChangeListener, which will
+	// maintain a dedicated connection to the postgres server and use LISTEN to receive
+	// asynchronous notifications (via the 'showtime' NOTIFY channel) whenever broadcast
+	// or screening records are inserted/updated
+	pqListener := pq.NewListener(connectionString, 10*time.Second, time.Minute, func(ev pq.ListenerEventType, err error) {
+		switch ev {
+		case pq.ListenerEventConnected:
+			fmt.Printf("pq listener connected (err: %v)\n", err)
+		case pq.ListenerEventDisconnected:
+			fmt.Printf("pq listener disconnected (err: %v)\n", err)
+		case pq.ListenerEventReconnected:
+			fmt.Printf("pq listener reconnected (err: %v)\n", err)
+		case pq.ListenerEventConnectionAttemptFailed:
+			fmt.Printf("pq listener connection attempt failed (err: %v)\n", err)
+		}
+		if err != nil {
+			log.Fatalf("pq.Listener failed: %v", err)
+		}
+	})
+	changeListener, err := broadcast.NewChangeListener(ctx, pqListener, q)
+	if err != nil {
+		log.Fatalf("failed to initialize ChangeListener: %v", err)
+	}
+	go func() {
+		err := changeListener.Run(ctx)
+		if err != nil && !errors.Is(err, context.Canceled) {
+			log.Fatalf("ChangeListener got an error: %v", err)
+		}
+	}()
 
 	// Prepare a Twitch client and use it to get the user ID for the configured channel,
 	// so we can identify the broadcaster
