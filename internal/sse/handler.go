@@ -13,6 +13,8 @@ import (
 type Handler[T any] struct {
 	ctx context.Context
 	b   bus[T]
+
+	OnConnectEventFunc func() T
 }
 
 // NewHandler initializes an SSE handler that will read messages from the given channel
@@ -58,10 +60,23 @@ func (h *Handler[T]) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 	res.WriteHeader(http.StatusOK)
 	res.(http.Flusher).Flush()
 
-	// Send an initial keepalive message: this ensures that Cloudfront will kick into
-	// action immediately without requiring special configuration rules
-	res.Write([]byte(":\n\n"))
-	res.(http.Flusher).Flush()
+	// If configured to send an initial value immediately upon connect, resolve that
+	// value and send it: otherwise send an initial keepalive message to ensure that
+	// Cloudfront will kick into action immediately without requiring special
+	// configuration rules
+	if h.OnConnectEventFunc != nil {
+		message := h.OnConnectEventFunc()
+		data, err := json.Marshal(message)
+		if err != nil {
+			fmt.Printf("Failed to serialize SSE message as JSON: %v\n", err)
+		} else {
+			fmt.Fprintf(res, "data: %s\n\n", data)
+			res.(http.Flusher).Flush()
+		}
+	} else {
+		res.Write([]byte(":\n\n"))
+		res.(http.Flusher).Flush()
+	}
 
 	// Open a channel to receive message structs (i.e. any JSON-serializable value that
 	// we want to send over our stream) as they're emitted
