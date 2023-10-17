@@ -81,17 +81,17 @@ func (l *ChangeListener) initialize(ctx context.Context, q Queries) error {
 		if !broadcast.EndedAt.Valid {
 			l.state.IsLive = true
 			l.state.BroadcastStartedAt = broadcast.StartedAt
-		}
 
-		screening, err := q.GetMostRecentScreening(ctx, broadcast.ID)
-		if err != nil && !errors.Is(err, sql.ErrNoRows) {
-			return err
-		}
-		if err == nil {
-			l.lastKnownScreeningStartedAt = screening.StartedAt
-			if !screening.EndedAt.Valid {
-				l.state.ScreeningTapeId = int(screening.TapeID)
-				l.state.ScreeningStartedAt = screening.StartedAt
+			screening, err := q.GetMostRecentScreening(ctx, broadcast.ID)
+			if err != nil && !errors.Is(err, sql.ErrNoRows) {
+				return err
+			}
+			if err == nil {
+				l.lastKnownScreeningStartedAt = screening.StartedAt
+				if !screening.EndedAt.Valid {
+					l.state.ScreeningTapeId = int(screening.TapeID)
+					l.state.ScreeningStartedAt = screening.StartedAt
+				}
 			}
 		}
 	}
