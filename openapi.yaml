@@ -25,6 +25,9 @@ tags:
   - name: streams
     description: |-
       SSE endpoints that provide real-time information using during streams
+  - name: admin
+    description: |-
+      Endpoints allowing the broadcaster to update stream state
 paths:
   /:
     get:
@@ -142,6 +145,10 @@ paths:
         - streams
       summary: |-
         Provides a client with real-time notifications of alerts (follow, raid, etc.)
+      description: |-
+        This SSE endpoint, designed primarily for use by the stream graphics overlay,
+        provides clients with a JSON message any time an alert should be displayed
+        onscreen.
       operationId: getAlerts
       responses:
         '200':
@@ -181,6 +188,10 @@ paths:
       summary: |-
         Provides a client with real-time chat messages
       description: |
+        This SSE endpoint, designed primarily for use by the stream graphics overlay,
+        provides clients with a JSON message any time the chat log should be updated,
+        either to display a new message or to clear existing messages.s
+
         Chat events carry a `type` value that indicates whether they're a message, a
         control event (such a deleting or clearing messages), etc.
 
@@ -231,11 +242,101 @@ paths:
                   summary: The entire chat log should be cleared
                   value:
                     type: clear
+  /state:
+    get:
+      tags:
+        - streams
+      summary: |-
+        Provides real-time notifications of stream state changes
+      description: |-
+        This SSE endpoint, designed primarily for use by the stream graphics overlay,
+        provides clients with a JSON message any time the stream state changes. Upon
+        initial connection, the client will receive a single message indicating the
+        current state of the stream.
+
+        "Stream state" encompasses:
+
+        - Whether the stream is live (i.e. whether there's a **broadcast** in progress)
+        - Whether we're screening a tape (i.e. whether there's a **screening** in
+          progress within that broadcast), including the ID of the tape we're screening
+      operationId: getState
+      responses:
+        '200':
+          description: |-
+            The HTTP connection opened for this request will be kept open, and the
+            server will write JSON-serialized `broadcast.State` objects into the
+            response body until the connection is closed.
+          content:
+            text/event-stream:
+              examples:
+                message:
+                  summary: The channel is offline
+                  value:
+                    isLive: false
+                deletion:
+                  summary: The channel is online, but no tape is being screened
+                  value:
+                    isLive: true
+                    broadcastStartedAt: '2023-10-18T11:40:07.361Z'
+                clear:
+                  summary: The channel is online, and a tape is being screened
+                  value:
+                    isLive: true
+                    broadcastStartedAt: '2023-10-18T11:40:07.361Z'
+                    screeningTapeId: 56
+                    screeningStartedAt: '2023-10-18T11:40:48.114Z'
+  /admin/tape/{id}:
+    post:
+      tags:
+        - admin
+      summary: |-
+        Initiates a new screening in the current broadcast
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: integer
+          required: true
+          description: ID of the tape to begin screening
+      security:
+        - twitchUserAccessToken: []
+      description: |-
+        Requires **broadcaster** authorization. If a broadcast is currently in progress,
+        ends any existing screenings for that broadcast, then creates a new screening
+        for the tape indicated by `id`.
+      responses:
+        '204':
+          description: |-
+            A new screening for the requested tape ID was successfully created in the
+            context of the current, in-progress broadcast. If any prior screenings
+            already existed in the same broadcast, they have now been ended.
+        '400':
+          description: |-
+            A screening could not be created because no broadcast is currently in
+            progress.
+  /admin/tape:
+    delete:
+      tags:
+        - admin
+      summary: |-
+        Ends any in-progress screenings in the current broadcast
+      security:
+        - twitchUserAccessToken: []
+      description: |-
+        Requires **broadcaster** authorization. If a broadcast is currently in progress,
+        ends any existing screenings for that broadcast.
+      responses:
+        '204':
+          description: |-
+            We have successfully ensured that all in-progress screenings for the current
+            broadcast have been ended. The response is the same regardless of whether
+            there actually _were_ any such screenings.
+        '400':
+          description: |-
+            No state changes could be made to screenings because no broadcast is
+            currently in progress.
 components:
   securitySchemes:
     twitchUserAccessToken:
-      type: http
-      scheme: bearer
-    twitchRefreshToken:
       type: http
       scheme: bearer
