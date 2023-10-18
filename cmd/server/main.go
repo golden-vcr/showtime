@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -202,37 +201,6 @@ func main() {
 			return changeListener.GetState()
 		}
 		r.Path("/state").Methods("GET").Handler(stateHandler)
-	}
-
-	// GET /view exposes the currently-selected tape ID (WIP)
-	{
-		handleView := func(res http.ResponseWriter, req *http.Request) {
-			// Look up the current tape ID, defaulting to "" if no tape change has ever been
-			// recorded
-			tapeIdAsInt, err := q.GetCurrentTapeId(req.Context())
-			if errors.Is(err, sql.ErrNoRows) {
-				tapeIdAsInt = -1
-			} else if err != nil {
-				fmt.Printf("Error getting tape ID: %v\n", err)
-				http.Error(res, err.Error(), http.StatusInternalServerError)
-				return
-			}
-
-			// Respond with our current state
-			type State struct {
-				TapeId string `json:"tapeId"`
-			}
-			state := &State{
-				TapeId: "",
-			}
-			if tapeIdAsInt > 0 {
-				state.TapeId = fmt.Sprintf("%d", tapeIdAsInt)
-			}
-			if err := json.NewEncoder(res).Encode(state); err != nil {
-				http.Error(res, err.Error(), http.StatusInternalServerError)
-			}
-		}
-		r.Path("/view").Methods("GET").HandlerFunc(handleView)
 	}
 
 	// Inject CORS support, since some of these APIs need to be called from the Golden
