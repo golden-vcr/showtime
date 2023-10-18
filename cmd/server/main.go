@@ -28,6 +28,7 @@ import (
 	"github.com/golden-vcr/showtime/internal/chat"
 	"github.com/golden-vcr/showtime/internal/events"
 	"github.com/golden-vcr/showtime/internal/health"
+	"github.com/golden-vcr/showtime/internal/history"
 	"github.com/golden-vcr/showtime/internal/sse"
 	"github.com/golden-vcr/showtime/internal/twitch"
 )
@@ -201,6 +202,12 @@ func main() {
 			return changeListener.GetState()
 		}
 		r.Path("/state").Methods("GET").Handler(stateHandler)
+	}
+
+	// GET /history exposes endpoints that provide information about past broadcasts
+	{
+		historyServer := history.NewServer(q)
+		historyServer.RegisterRoutes(r.PathPrefix("/history").Subrouter())
 	}
 
 	// Inject CORS support, since some of these APIs need to be called from the Golden
