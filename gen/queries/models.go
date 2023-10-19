@@ -7,6 +7,8 @@ package queries
 import (
 	"database/sql"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 // Record of a broadcast that occurred (or is occurring) on the GoldenVCR Twitch channel.
@@ -17,6 +19,34 @@ type ShowtimeBroadcast struct {
 	StartedAt time.Time
 	// Time at which the broadcast ended, if it's not still live. To account for the possibility of brief disruptions in internet service (or Twitch availability), it's possible to resume a broadcast once it's ended: a non-NULL ended_at timestamp does not definitively indicate that broadcast is done for good.
 	EndedAt sql.NullTime
+}
+
+// Record of an image that was successfully generated from a user-submitted image request. An image request may result in multiple images. Images are ordered by index, matching the array in which they were returned by the image generation API.
+type ShowtimeImage struct {
+	// ID of the image_request record associated with this image.
+	ImageRequestID uuid.UUID
+	// Sequential, zero-indexed position of this image in the original results array.
+	Index int32
+	// URL indicating where the image has been uploaded for long-term storage, so that it can be displayed in client applications.
+	Url string
+}
+
+// Records the fact that a user requested that images be generated, with their chosen prompt, to be overlaid on the video during the stream.
+type ShowtimeImageRequest struct {
+	// Globally unique identifier for this request.
+	ID uuid.UUID
+	// ID of the Twitch user that initiated this request.
+	TwitchUserID string
+	// Noun clause describing the desired subject of the image, e.g. "a cardboard box", "several large turkeys", "the concept of love".
+	SubjectNounClause string
+	// The complete prompt that was submitted in order to initiate image generation, e.g. "a ghostly image of several large turkeys, with glitchy VHS artifacts, dark background".
+	Prompt string
+	// Timestamp indicating when the request was submitted.
+	CreatedAt time.Time
+	// Timestamp indicating when we received a response for the image generation request, whether successful or not. If NULL, the request is still being processed and images are not ready yet.
+	FinishedAt sql.NullTime
+	// Error message describing why the request completed unsuccessfully. If NULL and finished_at is not NULL, the request completed successfully.
+	ErrorMessage sql.NullString
 }
 
 // Records the fact that a particular tape was played during a broadcast.
