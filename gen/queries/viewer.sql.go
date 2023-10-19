@@ -33,3 +33,25 @@ func (q *Queries) RecordViewerFollow(ctx context.Context, arg RecordViewerFollow
 	_, err := q.db.ExecContext(ctx, recordViewerFollow, arg.TwitchUserID, arg.TwitchDisplayName)
 	return err
 }
+
+const recordViewerIdentity = `-- name: RecordViewerIdentity :exec
+insert into showtime.viewer (
+    twitch_user_id,
+    twitch_display_name
+) values (
+    $1,
+    $2
+)
+on conflict (twitch_user_id) do update set
+    twitch_display_name = excluded.twitch_display_name
+`
+
+type RecordViewerIdentityParams struct {
+	TwitchUserID      string
+	TwitchDisplayName string
+}
+
+func (q *Queries) RecordViewerIdentity(ctx context.Context, arg RecordViewerIdentityParams) error {
+	_, err := q.db.ExecContext(ctx, recordViewerIdentity, arg.TwitchUserID, arg.TwitchDisplayName)
+	return err
+}

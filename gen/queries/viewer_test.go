@@ -9,6 +9,35 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func Test_RecordViewerIdentity(t *testing.T) {
+	tx := querytest.PrepareTx(t)
+	q := queries.New(tx)
+
+	querytest.AssertCount(t, tx, 0, "SELECT COUNT(*) FROM showtime.viewer")
+
+	err := q.RecordViewerIdentity(context.Background(), queries.RecordViewerIdentityParams{
+		TwitchUserID:      "1234",
+		TwitchDisplayName: "bungus",
+	})
+	assert.NoError(t, err)
+	querytest.AssertCount(t, tx, 1, `
+		SELECT COUNT(*) FROM showtime.viewer
+			WHERE twitch_user_id = '1234' AND twitch_display_name = 'bungus'
+	`)
+
+	err = q.RecordViewerIdentity(context.Background(), queries.RecordViewerIdentityParams{
+		TwitchUserID:      "1234",
+		TwitchDisplayName: "BunGus",
+	})
+	assert.NoError(t, err)
+	querytest.AssertCount(t, tx, 1, `
+		SELECT COUNT(*) FROM showtime.viewer WHERE
+			twitch_user_id = '1234' AND twitch_display_name = 'BunGus'
+	`)
+
+	querytest.AssertCount(t, tx, 1, "SELECT COUNT(*) FROM showtime.viewer")
+}
+
 func Test_RecordViewerFollow(t *testing.T) {
 	tx := querytest.PrepareTx(t)
 	q := queries.New(tx)
