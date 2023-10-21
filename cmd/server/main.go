@@ -145,11 +145,11 @@ func main() {
 
 	// Clients can hit GET /alerts to receive notifications in response to follows,
 	// raids, etc.: these are largely initiated in response to Twitch EventSub callbacks
+	alertsChan := make(chan *alerts.Alert, 32)
 	{
 		// events.Handler gets called in response to EventSub notifications, and
 		// whenever it decides that we should broadcast an alert, it write a new
 		// alert.Alert into alertsChan
-		alertsChan := make(chan *alerts.Alert, 32)
 		eventsHandler := events.NewHandler(ctx, q, alertsChan)
 
 		// events.Server implements the POST callback that Twitch hits (once we've run
@@ -230,7 +230,7 @@ func main() {
 		if err != nil {
 			log.Fatalf("Failed to initialize storage client for image generation: %v", err)
 		}
-		imagegenServer := imagegen.NewServer(q, imageGeneration, imageStorage)
+		imagegenServer := imagegen.NewServer(q, imageGeneration, imageStorage, alertsChan)
 		imagegenServer.RegisterRoutes(authClient, r.PathPrefix("/image-gen").Subrouter())
 	}
 

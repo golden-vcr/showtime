@@ -7,10 +7,12 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"sort"
 	"strings"
 
 	"github.com/golden-vcr/auth"
 	"github.com/golden-vcr/showtime/gen/queries"
+	"github.com/golden-vcr/showtime/internal/alerts"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"golang.org/x/sync/errgroup"
@@ -23,13 +25,15 @@ type Server struct {
 	q          Queries
 	generation GenerationClient
 	storage    StorageClient
+	alertsChan chan *alerts.Alert
 }
 
-func NewServer(q *queries.Queries, generation GenerationClient, storage StorageClient) *Server {
+func NewServer(q *queries.Queries, generation GenerationClient, storage StorageClient, alertsChan chan *alerts.Alert) *Server {
 	return &Server{
 		q:          q,
 		generation: generation,
 		storage:    storage,
+		alertsChan: alertsChan,
 	}
 }
 
@@ -138,9 +142,10 @@ func (s *Server) handleRequest(res http.ResponseWriter, req *http.Request) {
 	// Kick off a goroutine for each image that was generated, uploading it to our
 	// storage bucket and recording the new image in the database
 	var wg errgroup.Group
+	imageUrlsChan := make(chan string, len(generatedImages))
 	for i := range generatedImages {
 		image := &generatedImages[i]
-		thunk := getStoreImageFunc(req.Context(), imageRequestId, s.q, s.storage, image)
+		thunk := getStoreImageFunc(req.Context(), imageRequestId, s.q, s.storage, image, imageUrlsChan)
 		wg.Go(thunk)
 	}
 	if err := wg.Wait(); err != nil {
@@ -158,6 +163,24 @@ func (s *Server) handleRequest(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	// Generate an alert that will display these images onscreen during the stream
+	imageUrls := make([]string, 0, len(generatedImages))
+	for len(imageUrlsChan) > 0 {
+		imageUrls = append(imageUrls, <-imageUrlsChan)
+	}
+	sort.Strings(imageUrls)
+	s.alertsChan <- &alerts.Alert{
+		Type: alerts.AlertTypeGeneratedImages,
+		Data: alerts.AlertData{
+			GeneratedImages: &alerts.AlertDataGeneratedImages{
+				Username:    claims.User.DisplayName,
+				Description: payload.Subject,
+				Urls:        imageUrls,
+			},
+		},
+	}
+
 	res.WriteHeader(http.StatusNoContent)
 }
 
@@ -169,13 +192,14 @@ func formatImageKey(imageRequestId uuid.UUID, index int) string {
 	return fmt.Sprintf("%s/%s-%02d.jpg", imageRequestId, imageRequestId, index)
 }
 
-func storeImage(ctx context.Context, imageRequestId uuid.UUID, q Queries, storage StorageClient, image *GeneratedImage) error {
+func storeImage(ctx context.Context, imageRequestId uuid.UUID, q Queries, storage StorageClient, image *GeneratedImage, imageUrlsChan chan<- string) error {
 	// Store the image in our S3-compatible bucket
 	key := formatImageKey(imageRequestId, image.index)
 	imageUrl, err := storage.Upload(ctx, key, image.contentType, bytes.NewReader(image.data))
 	if err != nil {
 		return fmt.Errorf("failed to upload generated image to storage: %w", err)
 	}
+	imageUrlsChan <- imageUrl
 
 	// Record the fact that we've received this generated image
 	if err := q.RecordImage(ctx, queries.RecordImageParams{
@@ -188,8 +212,8 @@ func storeImage(ctx context.Context, imageRequestId uuid.UUID, q Queries, storag
 	return nil
 }
 
-func getStoreImageFunc(ctx context.Context, imageRequestId uuid.UUID, q Queries, storage StorageClient, image *GeneratedImage) func() error {
+func getStoreImageFunc(ctx context.Context, imageRequestId uuid.UUID, q Queries, storage StorageClient, image *GeneratedImage, imageUrlsChan chan<- string) func() error {
 	return func() error {
-		return storeImage(ctx, imageRequestId, q, storage, image)
+		return storeImage(ctx, imageRequestId, q, storage, image, imageUrlsChan)
 	}
 }

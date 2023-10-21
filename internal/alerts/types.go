@@ -5,8 +5,9 @@ import (
 )
 
 const (
-	AlertTypeFollow = "follow"
-	AlertTypeRaid   = "raid"
+	AlertTypeFollow          = "follow"
+	AlertTypeRaid            = "raid"
+	AlertTypeGeneratedImages = "generated-images"
 )
 
 type Alert struct {
@@ -15,8 +16,9 @@ type Alert struct {
 }
 
 type AlertData struct {
-	Follow *AlertDataFollow
-	Raid   *AlertDataRaid
+	Follow          *AlertDataFollow
+	Raid            *AlertDataRaid
+	GeneratedImages *AlertDataGeneratedImages
 }
 
 type AlertDataFollow struct {
@@ -28,12 +30,21 @@ type AlertDataRaid struct {
 	NumViewers int    `json:"numViewers"`
 }
 
+type AlertDataGeneratedImages struct {
+	Username    string   `json:"username"`
+	Description string   `json:"description"`
+	Urls        []string `json:"urls"`
+}
+
 func (ad AlertData) MarshalJSON() ([]byte, error) {
 	if ad.Follow != nil {
 		return json.Marshal(ad.Follow)
 	}
 	if ad.Raid != nil {
 		return json.Marshal(ad.Raid)
+	}
+	if ad.GeneratedImages != nil {
+		return json.Marshal(ad.GeneratedImages)
 	}
 	return json.Marshal(nil)
 }
