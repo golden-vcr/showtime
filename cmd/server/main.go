@@ -29,6 +29,7 @@ import (
 	"github.com/golden-vcr/showtime/internal/events"
 	"github.com/golden-vcr/showtime/internal/health"
 	"github.com/golden-vcr/showtime/internal/history"
+	"github.com/golden-vcr/showtime/internal/imagegen"
 	"github.com/golden-vcr/showtime/internal/sse"
 	"github.com/golden-vcr/showtime/internal/twitch"
 )
@@ -43,6 +44,14 @@ type Config struct {
 	TwitchExtensionClientId  string `env:"TWITCH_EXTENSION_CLIENT_ID" required:"true"`
 	TwitchWebhookCallbackUrl string `env:"TWITCH_WEBHOOK_CALLBACK_URL" default:"https://goldenvcr.com/api/showtime/callback"`
 	TwitchWebhookSecret      string `env:"TWITCH_WEBHOOK_SECRET" required:"true"`
+
+	OpenaiApiKey string `env:"OPENAI_API_KEY" required:"true"`
+
+	SpacesBucketName     string `env:"SPACES_BUCKET_NAME" required:"true"`
+	SpacesRegionName     string `env:"SPACES_REGION_NAME" required:"true"`
+	SpacesEndpointOrigin string `env:"SPACES_ENDPOINT_URL" required:"true"`
+	SpacesAccessKeyId    string `env:"SPACES_ACCESS_KEY_ID" required:"true"`
+	SpacesSecretKey      string `env:"SPACES_SECRET_KEY" required:"true"`
 
 	AuthURL string `env:"AUTH_URL" default:"http://localhost:5002"`
 
@@ -185,11 +194,9 @@ func main() {
 		r.Path("/").Methods("GET").Handler(healthServer)
 	}
 
-	// GET /admin/secrets is a temporary test endpoint that we can use to verify that
-	// our new access control code (using the auth API) is working as intended: only the
-	// broadcaster should be permitted to get data from this endpoint
+	// POST /admin/tape/:id etc. allow the broadcaster to update the state of streams
+	authClient := auth.NewClient(config.AuthURL)
 	{
-		authClient := auth.NewClient(config.AuthURL)
 		adminServer := admin.NewServer(q)
 		adminServer.RegisterRoutes(authClient, r.PathPrefix("/admin").Subrouter())
 	}
@@ -208,6 +215,23 @@ func main() {
 	{
 		historyServer := history.NewServer(q)
 		historyServer.RegisterRoutes(r.PathPrefix("/history").Subrouter())
+	}
+
+	// POST /image-gen allows requests to be submitted for image generation
+	{
+		imageGeneration := imagegen.NewGenerationClient(config.OpenaiApiKey)
+		imageStorage, err := imagegen.NewStorageClient(
+			config.SpacesAccessKeyId,
+			config.SpacesSecretKey,
+			config.SpacesEndpointOrigin,
+			config.SpacesRegionName,
+			config.SpacesBucketName,
+		)
+		if err != nil {
+			log.Fatalf("Failed to initialize storage client for image generation: %v", err)
+		}
+		imagegenServer := imagegen.NewServer(q, imageGeneration, imageStorage)
+		imagegenServer.RegisterRoutes(authClient, r.PathPrefix("/image-gen").Subrouter())
 	}
 
 	// Inject CORS support, since some of these APIs need to be called from the Golden
