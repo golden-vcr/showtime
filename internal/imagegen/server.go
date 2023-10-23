@@ -51,17 +51,9 @@ func (s *Server) RegisterRoutes(c auth.Client, r *mux.Router) {
 }
 
 func (s *Server) handleRequest(res http.ResponseWriter, req *http.Request) {
-	// Identify the user from their authorization token, and ensure that they have a
-	// viewer record in the database
+	// Identify the user from their authorization token
 	claims, err := auth.GetClaims(req)
 	if err != nil {
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	if err := s.q.RecordViewerIdentity(req.Context(), queries.RecordViewerIdentityParams{
-		TwitchUserID:      claims.User.Id,
-		TwitchDisplayName: claims.User.DisplayName,
-	}); err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -85,6 +77,15 @@ func (s *Server) handleRequest(res http.ResponseWriter, req *http.Request) {
 	}
 	if len(payload.Subject) > MaxSubjectLen {
 		http.Error(res, "invalid request payload: 'subject' must be <= 120 characters", http.StatusBadRequest)
+		return
+	}
+
+	// Ensure that the user has a viewer record in the database
+	if err := s.q.RecordViewerIdentity(req.Context(), queries.RecordViewerIdentityParams{
+		TwitchUserID:      claims.User.Id,
+		TwitchDisplayName: claims.User.DisplayName,
+	}); err != nil {
+		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
