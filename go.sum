@@ -13,6 +13,8 @@ github.com/golden-vcr/auth v0.0.0-20231004185657-7a3840bd7077 h1:LzgxElw1SxoXPj3
 github.com/golden-vcr/auth v0.0.0-20231004185657-7a3840bd7077/go.mod h1:MPiE5ypd/2MkgJr9PrAw7aKLj5qo6ZxgqpL5gHdZTRQ=
 github.com/golden-vcr/server-common v0.2.0 h1:UjBKWul7YWT0pLDxFU49m6hIuo/q2Za+aK75/AjjgMc=
 github.com/golden-vcr/server-common v0.2.0/go.mod h1:BnDmeVjFiwkWHJIshKNRU3P16nDIXl53aSMdQTP5vzs=
+github.com/golden-vcr/server-common v0.3.0 h1:BZfr+VezE8X3e+Uh/up7hVv766j98CAcMfaIlewoEIU=
+github.com/golden-vcr/server-common v0.3.0/go.mod h1:BnDmeVjFiwkWHJIshKNRU3P16nDIXl53aSMdQTP5vzs=
 github.com/google/uuid v1.3.1 h1:KjJaJ9iWZ3jOFZIf1Lqf4laDRCasjl0BCmnEGxkdLb4=
 github.com/google/uuid v1.3.1/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
 github.com/gorilla/mux v1.8.0 h1:i40aqfkR1h2SlN9hojwV5ZA91wcXFOvkdNIeFDP5koI=

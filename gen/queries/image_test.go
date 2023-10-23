@@ -67,9 +67,7 @@ func Test_RecordImageRequestFailure(t *testing.T) {
 		ErrorMessage:   "something went wrong",
 	})
 	assert.NoError(t, err)
-	numRows, err := res.RowsAffected()
-	assert.NoError(t, err)
-	assert.Equal(t, int64(1), numRows)
+	querytest.AssertNumRowsChanged(t, res, 1)
 
 	querytest.AssertCount(t, tx, 1, `
 		SELECT COUNT(*) FROM showtime.image_request
@@ -89,9 +87,7 @@ func Test_RecordImageRequestFailure(t *testing.T) {
 		ErrorMessage:   "a different thing went wrong, like, again",
 	})
 	assert.NoError(t, err)
-	numRows, err = res.RowsAffected()
-	assert.NoError(t, err)
-	assert.Equal(t, int64(0), numRows)
+	querytest.AssertNumRowsChanged(t, res, 0)
 
 	// Attempting to record a result for an image_request with an invalid uuid should
 	// affect 0 rows
@@ -100,9 +96,7 @@ func Test_RecordImageRequestFailure(t *testing.T) {
 		ErrorMessage:   "oh no",
 	})
 	assert.NoError(t, err)
-	numRows, err = res.RowsAffected()
-	assert.NoError(t, err)
-	assert.Equal(t, int64(0), numRows)
+	querytest.AssertNumRowsChanged(t, res, 0)
 }
 
 func Test_RecordImageRequestSuccess(t *testing.T) {
@@ -127,9 +121,7 @@ func Test_RecordImageRequestSuccess(t *testing.T) {
 
 	res, err := q.RecordImageRequestSuccess(context.Background(), uuid.MustParse("5e6115ea-d7ac-44aa-81a0-17a715bc984d"))
 	assert.NoError(t, err)
-	numRows, err := res.RowsAffected()
-	assert.NoError(t, err)
-	assert.Equal(t, int64(1), numRows)
+	querytest.AssertNumRowsChanged(t, res, 1)
 
 	querytest.AssertCount(t, tx, 1, `
 		SELECT COUNT(*) FROM showtime.image_request
@@ -146,17 +138,13 @@ func Test_RecordImageRequestSuccess(t *testing.T) {
 	// affect 0 rows
 	res, err = q.RecordImageRequestSuccess(context.Background(), uuid.MustParse("5e6115ea-d7ac-44aa-81a0-17a715bc984d"))
 	assert.NoError(t, err)
-	numRows, err = res.RowsAffected()
-	assert.NoError(t, err)
-	assert.Equal(t, int64(0), numRows)
+	querytest.AssertNumRowsChanged(t, res, 0)
 
 	// Attempting to record a result for an image_request with an invalid uuid should
 	// affect 0 rows
 	res, err = q.RecordImageRequestSuccess(context.Background(), uuid.MustParse("1c98937b-406d-4358-aec5-b69edd460394"))
 	assert.NoError(t, err)
-	numRows, err = res.RowsAffected()
-	assert.NoError(t, err)
-	assert.Equal(t, int64(0), numRows)
+	querytest.AssertNumRowsChanged(t, res, 0)
 }
 
 func Test_RecordImage(t *testing.T) {
