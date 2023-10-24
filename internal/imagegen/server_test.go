@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/golden-vcr/auth"
@@ -283,9 +284,13 @@ type mockStorageClient struct {
 		contentType string
 		data        []byte
 	}
+	mu sync.Mutex
 }
 
 func (m *mockStorageClient) Upload(ctx context.Context, key string, contentType string, data io.ReadSeeker) (string, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	if m.err != nil {
 		return "", m.err
 	}
