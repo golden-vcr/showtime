@@ -89,7 +89,8 @@ func (s *Server) handleRequest(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// Record our image generation request in the database, and prepare
+	// Record our image generation request in the database, and prepare a function that
+	// we can use to record its failure (prior to returning) in the event of any error
 	imageRequestId := uuid.New()
 	prompt := formatPrompt(payload.Subject)
 	if err := s.q.RecordImageRequest(req.Context(), queries.RecordImageRequestParams{
