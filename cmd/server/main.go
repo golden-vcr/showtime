@@ -20,6 +20,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/golden-vcr/auth"
+	"github.com/golden-vcr/ledger"
 	"github.com/golden-vcr/server-common/db"
 	"github.com/golden-vcr/showtime/gen/queries"
 	"github.com/golden-vcr/showtime/internal/admin"
@@ -53,7 +54,8 @@ type Config struct {
 	SpacesAccessKeyId    string `env:"SPACES_ACCESS_KEY_ID" required:"true"`
 	SpacesSecretKey      string `env:"SPACES_SECRET_KEY" required:"true"`
 
-	AuthURL string `env:"AUTH_URL" default:"http://localhost:5002"`
+	AuthURL   string `env:"AUTH_URL" default:"http://localhost:5002"`
+	LedgerURL string `env:"LEDGER_URL" default:"http://localhost:5003"`
 
 	DatabaseHost     string `env:"PGHOST" required:"true"`
 	DatabasePort     int    `env:"PGPORT" required:"true"`
@@ -129,6 +131,12 @@ func main() {
 		}
 	}()
 
+	// We need an auth client in order to validate access tokens, and we need a ledger
+	// client in order to perform operations that require deducting Golden VCR Fun
+	// Points from the auth'd user's balance
+	authClient := auth.NewClient(config.AuthURL)
+	ledgerClient := ledger.NewClient(config.LedgerURL)
+
 	// Prepare a Twitch client and use it to get the user ID for the configured channel,
 	// so we can identify the broadcaster
 	twitchClient, err := twitch.NewClientWithAppToken(config.TwitchClientId, config.TwitchClientSecret)
@@ -195,7 +203,6 @@ func main() {
 	}
 
 	// POST /admin/tape/:id etc. allow the broadcaster to update the state of streams
-	authClient := auth.NewClient(config.AuthURL)
 	{
 		adminServer := admin.NewServer(q)
 		adminServer.RegisterRoutes(authClient, r.PathPrefix("/admin").Subrouter())
@@ -230,7 +237,7 @@ func main() {
 		if err != nil {
 			log.Fatalf("Failed to initialize storage client for image generation: %v", err)
 		}
-		imagegenServer := imagegen.NewServer(q, imageGeneration, imageStorage, alertsChan)
+		imagegenServer := imagegen.NewServer(q, ledgerClient, imageGeneration, imageStorage, alertsChan)
 		imagegenServer.RegisterRoutes(authClient, r.PathPrefix("/image-gen").Subrouter())
 	}
 

@@ -1,12 +1,13 @@
 module github.com/golden-vcr/showtime
 
-go 1.21.1
+go 1.21.3
 
 require (
 	github.com/aws/aws-sdk-go v1.46.0
 	github.com/codingconcepts/env v0.0.0-20200821220118-a8fbf8d84482
 	github.com/gempir/go-twitch-irc/v4 v4.0.0
-	github.com/golden-vcr/auth v0.0.0-20231004185657-7a3840bd7077
+	github.com/golden-vcr/auth v0.0.0-20231016171253-54e363f981f1
+	github.com/golden-vcr/ledger v0.1.2
 	github.com/golden-vcr/server-common v0.3.0
 	github.com/google/uuid v1.3.1
 	github.com/gorilla/mux v1.8.0

@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/golden-vcr/auth"
+	"github.com/golden-vcr/ledger"
 	"github.com/golden-vcr/showtime/gen/queries"
 	"github.com/golden-vcr/showtime/internal/alerts"
 	"github.com/google/uuid"
@@ -21,16 +22,21 @@ import (
 const MaxSubjectLen = 120
 const NumImagesToGeneratePerPrompt = 4
 
+const ImageAlertType = "image-generation"
+const ImageAlertPointsCost = 500
+
 type Server struct {
 	q          Queries
+	ledger     ledger.Client
 	generation GenerationClient
 	storage    StorageClient
 	alertsChan chan *alerts.Alert
 }
 
-func NewServer(q *queries.Queries, generation GenerationClient, storage StorageClient, alertsChan chan *alerts.Alert) *Server {
+func NewServer(q *queries.Queries, ledger ledger.Client, generation GenerationClient, storage StorageClient, alertsChan chan *alerts.Alert) *Server {
 	return &Server{
 		q:          q,
+		ledger:     ledger,
 		generation: generation,
 		storage:    storage,
 		alertsChan: alertsChan,
@@ -38,10 +44,10 @@ func NewServer(q *queries.Queries, generation GenerationClient, storage StorageC
 }
 
 func (s *Server) RegisterRoutes(c auth.Client, r *mux.Router) {
-	// Require broadcaster access for all image generation routes, until we have a way
-	// of rate-limiting and gating access for viewers who want to generate images
+	// Require viewer access for all image generation routes: generating image alerts
+	// requires the user to spend Golden VCR Fun Points
 	r.Use(func(next http.Handler) http.Handler {
-		return auth.RequireAccess(c, auth.RoleBroadcaster, next)
+		return auth.RequireAccess(c, auth.RoleViewer, next)
 	})
 
 	// POST / submits a request to generate a new image to be displayed onscreen
@@ -89,9 +95,22 @@ func (s *Server) handleRequest(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	// Contact the ledger service to create a pending transaction
+	imageRequestId := uuid.New()
+	alertMetadata := json.RawMessage([]byte(fmt.Sprintf(`{"imageRequestId":"%s"}`, imageRequestId)))
+	transaction, err := s.ledger.RequestAlertRedemption(req.Context(), req.Header.Get("authorization"), ImageAlertPointsCost, string(ImageAlertType), &alertMetadata)
+	if err != nil {
+		status := http.StatusInternalServerError
+		if errors.Is(err, ledger.ErrNotEnoughPoints) {
+			status = http.StatusConflict
+		}
+		http.Error(res, err.Error(), status)
+		return
+	}
+	defer transaction.Finalize(req.Context())
+
 	// Record our image generation request in the database, and prepare a function that
 	// we can use to record its failure (prior to returning) in the event of any error
-	imageRequestId := uuid.New()
 	prompt := formatPrompt(payload.Subject)
 	if err := s.q.RecordImageRequest(req.Context(), queries.RecordImageRequestParams{
 		ImageRequestID:    imageRequestId,
@@ -181,6 +200,15 @@ func (s *Server) handleRequest(res http.ResponseWriter, req *http.Request) {
 				Urls:        imageUrls,
 			},
 		},
+	}
+
+	// We've successfully generated an alert from the user's request, so finalize the
+	// transaction to deduct the points we debited from them - if we don't make it here,
+	// our deferred called to transaction.Finalize will reject the transaction instead,
+	// causing the debited points to be refunded
+	if err := transaction.Accept(req.Context()); err != nil {
+		http.Error(res, fmt.Sprintf("failed to finalize transaction: %v", err), http.StatusInternalServerError)
+		return
 	}
 
 	res.WriteHeader(http.StatusNoContent)

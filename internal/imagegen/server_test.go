@@ -13,6 +13,7 @@ import (
 
 	"github.com/golden-vcr/auth"
 	authmock "github.com/golden-vcr/auth/mock"
+	ledgermock "github.com/golden-vcr/ledger/mock"
 	"github.com/golden-vcr/showtime/gen/queries"
 	"github.com/golden-vcr/showtime/internal/alerts"
 	"github.com/google/uuid"
@@ -21,27 +22,31 @@ import (
 
 func Test_Server_handleRequest(t *testing.T) {
 	tests := []struct {
-		name                  string
-		q                     *mockQueries
-		generation            *mockGenerationClient
-		storage               *mockStorageClient
-		body                  string
-		wantStatus            int
-		wantBody              string
-		wantRequestRecorded   bool
-		wantRequestSucceeded  bool
-		wantNumImagesRecorded int
-		wantImageDataStored   [][]byte
-		wantAlert             *alerts.AlertDataGeneratedImages
+		name                       string
+		q                          *mockQueries
+		initialBalance             int
+		generation                 *mockGenerationClient
+		storage                    *mockStorageClient
+		body                       string
+		wantStatus                 int
+		wantBody                   string
+		wantViewerIdentityRecorded bool
+		wantRequestRecorded        bool
+		wantRequestSucceeded       bool
+		wantNumImagesRecorded      int
+		wantImageDataStored        [][]byte
+		wantAlert                  *alerts.AlertDataGeneratedImages
 	}{
 		{
 			"subject is required",
 			&mockQueries{},
+			1000,
 			&mockGenerationClient{},
 			&mockStorageClient{},
 			`{}`,
 			http.StatusBadRequest,
 			"invalid request payload: 'subject' is required",
+			false,
 			false,
 			false,
 			0,
@@ -51,11 +56,13 @@ func Test_Server_handleRequest(t *testing.T) {
 		{
 			"normal usage",
 			&mockQueries{},
+			1000,
 			&mockGenerationClient{},
 			&mockStorageClient{},
 			`{"subject":"a seal"}`,
 			http.StatusNoContent,
 			"",
+			true,
 			true,
 			true,
 			4,
@@ -77,8 +84,25 @@ func Test_Server_handleRequest(t *testing.T) {
 			},
 		},
 		{
+			"insufficient point balance is propagated as 409 error",
+			&mockQueries{},
+			0,
+			&mockGenerationClient{},
+			&mockStorageClient{},
+			`{"subject":"a seal"}`,
+			http.StatusConflict,
+			"not enough points",
+			true,
+			false,
+			false,
+			0,
+			nil,
+			nil,
+		},
+		{
 			"rejection from image generation API is propagated as 400 error",
 			&mockQueries{},
+			1000,
 			&mockGenerationClient{
 				err: &rejectionError{"objectionable content detected"},
 			},
@@ -86,6 +110,7 @@ func Test_Server_handleRequest(t *testing.T) {
 			`{"subject":"something objectionable"}`,
 			http.StatusBadRequest,
 			"image generation request rejected: objectionable content detected",
+			true,
 			true,
 			false,
 			0,
@@ -95,6 +120,7 @@ func Test_Server_handleRequest(t *testing.T) {
 		{
 			"other errors in image generation are 500 errors",
 			&mockQueries{},
+			1000,
 			&mockGenerationClient{
 				err: fmt.Errorf("mock error"),
 			},
@@ -102,6 +128,7 @@ func Test_Server_handleRequest(t *testing.T) {
 			`{"subject":"a seal"}`,
 			http.StatusInternalServerError,
 			"mock error",
+			true,
 			true,
 			false,
 			0,
@@ -111,6 +138,7 @@ func Test_Server_handleRequest(t *testing.T) {
 		{
 			"storage errors are 500 errors",
 			&mockQueries{},
+			1000,
 			&mockGenerationClient{},
 			&mockStorageClient{
 				err: fmt.Errorf("mock error"),
@@ -118,6 +146,7 @@ func Test_Server_handleRequest(t *testing.T) {
 			`{"subject":"a seal"}`,
 			http.StatusInternalServerError,
 			"failed to upload generated image to storage: mock error",
+			true,
 			true,
 			false,
 			0,
@@ -130,6 +159,7 @@ func Test_Server_handleRequest(t *testing.T) {
 			alertsChan := make(chan *alerts.Alert, 8)
 			s := &Server{
 				q:          tt.q,
+				ledger:     ledgermock.NewClient().Grant("mock-token", tt.initialBalance),
 				generation: tt.generation,
 				storage:    tt.storage,
 				alertsChan: alertsChan,
@@ -155,8 +185,12 @@ func Test_Server_handleRequest(t *testing.T) {
 			assert.Equal(t, tt.wantBody, body)
 
 			// Verify expected database operations
-			if tt.wantRequestRecorded {
+			if tt.wantViewerIdentityRecorded {
 				assert.Len(t, tt.q.recordViewerIdentityCalls, 1)
+			} else {
+				assert.Len(t, tt.q.recordViewerIdentityCalls, 0)
+			}
+			if tt.wantRequestRecorded {
 				assert.Len(t, tt.q.recordImageRequestCalls, 1)
 				if tt.wantRequestSucceeded {
 					assert.Len(t, tt.q.recordImageRequestSuccessCalls, 1)
@@ -166,7 +200,6 @@ func Test_Server_handleRequest(t *testing.T) {
 					assert.Len(t, tt.q.recordImageRequestFailureCalls, 1)
 				}
 			} else {
-				assert.Len(t, tt.q.recordViewerIdentityCalls, 0)
 				assert.Len(t, tt.q.recordImageRequestCalls, 0)
 				assert.Len(t, tt.q.recordImageRequestSuccessCalls, 0)
 				assert.Len(t, tt.q.recordImageRequestFailureCalls, 0)

@@ -62,7 +62,7 @@ func (h *Handler[T]) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 
 	// If configured to send an initial value immediately upon connect, resolve that
 	// value and send it: otherwise send an initial keepalive message to ensure that
-	// Cloudfront will kick into action immediately without requiring special
+	// Cloudflare will kick into action immediately without requiring special
 	// configuration rules
 	if h.OnConnectEventFunc != nil {
 		message := h.OnConnectEventFunc()
