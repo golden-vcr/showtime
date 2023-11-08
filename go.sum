@@ -11,6 +11,8 @@ github.com/golang-jwt/jwt/v4 v4.0.0 h1:RAqyYixv1p7uEnocuy8P1nru5wprCh/MH2BIlW5z5
 github.com/golang-jwt/jwt/v4 v4.0.0/go.mod h1:/xlHOz8bRuivTWchD4jCa+NbatV+wEUSzwAxVc6locg=
 github.com/golden-vcr/auth v0.0.0-20231016171253-54e363f981f1 h1:VVwydKmDQuOXiIifn9BJck0di57Brp6lpBnkUUzYvqE=
 github.com/golden-vcr/auth v0.0.0-20231016171253-54e363f981f1/go.mod h1:ah8wcbxs+iE9qz9Pv90Tvm00A2LGwuJBpawMShQFDJk=
+github.com/golden-vcr/auth v0.1.0 h1:OLqTiJqsLyydNoV7nYA7486bOdGyy3DuVrxrtropsIU=
+github.com/golden-vcr/auth v0.1.0/go.mod h1:ah8wcbxs+iE9qz9Pv90Tvm00A2LGwuJBpawMShQFDJk=
 github.com/golden-vcr/ledger v0.1.0 h1:ysuscQboq0I79hoxrZlbrYRFW0eJUiO34jMbXCTVcqI=
 github.com/golden-vcr/ledger v0.1.0/go.mod h1:hRbYuPIhFhvl0DpqJQFBQrirZbgsKY0XCXb4IXPrTSw=
 github.com/golden-vcr/ledger v0.1.1 h1:3nio9oHxJebwsBxNhlWNTmJ5Kov0A9Cwluab4saeIG8=

@@ -98,7 +98,7 @@ func (s *Server) handleRequest(res http.ResponseWriter, req *http.Request) {
 	// Contact the ledger service to create a pending transaction
 	imageRequestId := uuid.New()
 	alertMetadata := json.RawMessage([]byte(fmt.Sprintf(`{"imageRequestId":"%s"}`, imageRequestId)))
-	transaction, err := s.ledger.RequestAlertRedemption(req.Context(), req.Header.Get("authorization"), ImageAlertPointsCost, string(ImageAlertType), &alertMetadata)
+	transaction, err := s.ledger.RequestAlertRedemption(req.Context(), auth.GetToken(req), ImageAlertPointsCost, string(ImageAlertType), &alertMetadata)
 	if err != nil {
 		status := http.StatusInternalServerError
 		if errors.Is(err, ledger.ErrNotEnoughPoints) {
