@@ -39,6 +39,7 @@ const recordImageRequest = `-- name: RecordImageRequest :exec
 insert into showtime.image_request (
     id,
     twitch_user_id,
+    screening_id,
     subject_noun_clause,
     prompt,
     created_at
@@ -47,6 +48,7 @@ insert into showtime.image_request (
     $2,
     $3,
     $4,
+    $5,
     now()
 )
 `
@@ -54,6 +56,7 @@ insert into showtime.image_request (
 type RecordImageRequestParams struct {
 	ImageRequestID    uuid.UUID
 	TwitchUserID      string
+	ScreeningID       uuid.NullUUID
 	SubjectNounClause string
 	Prompt            string
 }
@@ -62,6 +65,7 @@ func (q *Queries) RecordImageRequest(ctx context.Context, arg RecordImageRequest
 	_, err := q.db.ExecContext(ctx, recordImageRequest,
 		arg.ImageRequestID,
 		arg.TwitchUserID,
+		arg.ScreeningID,
 		arg.SubjectNounClause,
 		arg.Prompt,
 	)

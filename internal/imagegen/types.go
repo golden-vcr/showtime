@@ -11,6 +11,7 @@ import (
 // Queries represents the subset of database functionality required to handle image
 // generation requests
 type Queries interface {
+	GetCurrentScreening(ctx context.Context) (queries.GetCurrentScreeningRow, error)
 	RecordViewerIdentity(ctx context.Context, arg queries.RecordViewerIdentityParams) error
 	RecordImageRequest(ctx context.Context, arg queries.RecordImageRequestParams) error
 	RecordImageRequestFailure(ctx context.Context, arg queries.RecordImageRequestFailureParams) (sql.Result, error)

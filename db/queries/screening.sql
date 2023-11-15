@@ -24,15 +24,14 @@ update showtime.screening set ended_at = now()
 where screening.broadcast_id = sqlc.arg('broadcast_id')
     and screening.ended_at is null;
 
--- name: GetCurrentTapeId :one
+-- name: GetCurrentScreening :one
 select
-    (case when screening.ended_at is null
-        then screening.tape_id
-        else null
-    end)::integer as tape_id
-from showtime.screening
-where screening.broadcast_id = (
-    select broadcast.id from showtime.broadcast
-    order by broadcast.started_at desc limit 1
-)
-order by screening.started_at desc limit 1;
+    screening.id::uuid as id,
+    screening.tape_id,
+    screening.started_at,
+    screening.ended_at
+from showtime.broadcast
+join showtime.screening
+    on screening.broadcast_id = broadcast.id
+order by screening.started_at desc, broadcast.started_at desc
+limit 1;

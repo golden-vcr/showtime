@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/golden-vcr/auth"
 	authmock "github.com/golden-vcr/auth/mock"
@@ -32,6 +33,7 @@ func Test_Server_handleRequest(t *testing.T) {
 		wantBody                   string
 		wantViewerIdentityRecorded bool
 		wantRequestRecorded        bool
+		wantRequestScreeningId     uuid.NullUUID
 		wantRequestSucceeded       bool
 		wantNumImagesRecorded      int
 		wantImageDataStored        [][]byte
@@ -48,6 +50,7 @@ func Test_Server_handleRequest(t *testing.T) {
 			"invalid request payload: 'subject' is required",
 			false,
 			false,
+			uuid.NullUUID{},
 			false,
 			0,
 			nil,
@@ -64,6 +67,46 @@ func Test_Server_handleRequest(t *testing.T) {
 			"",
 			true,
 			true,
+			uuid.NullUUID{},
+			true,
+			4,
+			[][]byte{
+				generateMockImageData(0),
+				generateMockImageData(1),
+				generateMockImageData(2),
+				generateMockImageData(3),
+			},
+			&alerts.AlertDataGeneratedImages{
+				Username:    "Jerry",
+				Description: "a seal",
+				Urls: []string{
+					generateMockStorageUrl("*-01.jpg"),
+					generateMockStorageUrl("*-02.jpg"),
+					generateMockStorageUrl("*-03.jpg"),
+					generateMockStorageUrl("*-04.jpg"),
+				},
+			},
+		},
+		{
+			"image request is recorded with screening id if a screening is currently active",
+			&mockQueries{
+				currentScreeningId: uuid.NullUUID{
+					Valid: true,
+					UUID:  uuid.MustParse("a55e5666-648b-436d-b973-667c239d05ef"),
+				},
+			},
+			1000,
+			&mockGenerationClient{},
+			&mockStorageClient{},
+			`{"subject":"a seal"}`,
+			http.StatusNoContent,
+			"",
+			true,
+			true,
+			uuid.NullUUID{
+				Valid: true,
+				UUID:  uuid.MustParse("a55e5666-648b-436d-b973-667c239d05ef"),
+			},
 			true,
 			4,
 			[][]byte{
@@ -94,6 +137,7 @@ func Test_Server_handleRequest(t *testing.T) {
 			"not enough points",
 			true,
 			false,
+			uuid.NullUUID{},
 			false,
 			0,
 			nil,
@@ -112,6 +156,7 @@ func Test_Server_handleRequest(t *testing.T) {
 			"image generation request rejected: objectionable content detected",
 			true,
 			true,
+			uuid.NullUUID{},
 			false,
 			0,
 			nil,
@@ -130,6 +175,7 @@ func Test_Server_handleRequest(t *testing.T) {
 			"mock error",
 			true,
 			true,
+			uuid.NullUUID{},
 			false,
 			0,
 			nil,
@@ -148,6 +194,7 @@ func Test_Server_handleRequest(t *testing.T) {
 			"failed to upload generated image to storage: mock error",
 			true,
 			true,
+			uuid.NullUUID{},
 			false,
 			0,
 			nil,
@@ -192,6 +239,13 @@ func Test_Server_handleRequest(t *testing.T) {
 			}
 			if tt.wantRequestRecorded {
 				assert.Len(t, tt.q.recordImageRequestCalls, 1)
+				if tt.wantRequestScreeningId.Valid {
+					assert.True(t, tt.q.recordImageRequestCalls[0].ScreeningID.Valid)
+					assert.Equal(t, tt.wantRequestScreeningId.UUID, tt.q.recordImageRequestCalls[0].ScreeningID.UUID)
+				} else {
+					assert.False(t, tt.q.recordImageRequestCalls[0].ScreeningID.Valid)
+				}
+
 				if tt.wantRequestSucceeded {
 					assert.Len(t, tt.q.recordImageRequestSuccessCalls, 1)
 					assert.Len(t, tt.q.recordImageRequestFailureCalls, 0)
@@ -231,6 +285,7 @@ func Test_Server_handleRequest(t *testing.T) {
 
 // mockQueries implements imagegen.Queries for testing
 type mockQueries struct {
+	currentScreeningId             uuid.NullUUID
 	recordViewerIdentityCalls      []queries.RecordViewerIdentityParams
 	recordImageRequestCalls        []queries.RecordImageRequestParams
 	recordImageRequestFailureCalls []queries.RecordImageRequestFailureParams
@@ -248,6 +303,22 @@ func (r mockSqlResult) LastInsertId() (int64, error) {
 
 func (r mockSqlResult) RowsAffected() (int64, error) {
 	return r.numRowsAffected, nil
+}
+
+func (m *mockQueries) GetCurrentScreening(ctx context.Context) (queries.GetCurrentScreeningRow, error) {
+	if m.currentScreeningId.Valid {
+		return queries.GetCurrentScreeningRow{
+			ID:        m.currentScreeningId.UUID,
+			TapeID:    999,
+			StartedAt: time.Now(),
+		}, nil
+	}
+	return queries.GetCurrentScreeningRow{
+		ID:        uuid.MustParse("c3fce133-711b-403d-be4c-3eb8f6ec021a"),
+		TapeID:    999,
+		StartedAt: time.Now(),
+		EndedAt:   sql.NullTime{Valid: true, Time: time.Now()},
+	}, nil
 }
 
 func (m *mockQueries) RecordViewerIdentity(ctx context.Context, arg queries.RecordViewerIdentityParams) error {

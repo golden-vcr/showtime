@@ -3,6 +3,7 @@ package imagegen
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -86,6 +87,19 @@ func (s *Server) handleRequest(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	// Check whether there's a screening in progress: if so, record the image request as
+	// taking place during that screening
+	var screeningId uuid.NullUUID
+	screening, err := s.q.GetCurrentScreening(req.Context())
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if err == nil && !screening.EndedAt.Valid {
+		screeningId.Valid = true
+		screeningId.UUID = screening.ID
+	}
+
 	// Ensure that the user has a viewer record in the database
 	if err := s.q.RecordViewerIdentity(req.Context(), queries.RecordViewerIdentityParams{
 		TwitchUserID:      claims.User.Id,
@@ -117,6 +131,7 @@ func (s *Server) handleRequest(res http.ResponseWriter, req *http.Request) {
 		TwitchUserID:      claims.User.Id,
 		SubjectNounClause: payload.Subject,
 		Prompt:            prompt,
+		ScreeningID:       screeningId,
 	}); err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return

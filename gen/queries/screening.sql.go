@@ -9,27 +9,40 @@ import (
 	"context"
 	"database/sql"
 	"time"
+
+	"github.com/google/uuid"
 )
 
-const getCurrentTapeId = `-- name: GetCurrentTapeId :one
+const getCurrentScreening = `-- name: GetCurrentScreening :one
 select
-    (case when screening.ended_at is null
-        then screening.tape_id
-        else null
-    end)::integer as tape_id
-from showtime.screening
-where screening.broadcast_id = (
-    select broadcast.id from showtime.broadcast
-    order by broadcast.started_at desc limit 1
-)
-order by screening.started_at desc limit 1
+    screening.id::uuid as id,
+    screening.tape_id,
+    screening.started_at,
+    screening.ended_at
+from showtime.broadcast
+join showtime.screening
+    on screening.broadcast_id = broadcast.id
+order by screening.started_at desc, broadcast.started_at desc
+limit 1
 `
 
-func (q *Queries) GetCurrentTapeId(ctx context.Context) (int32, error) {
-	row := q.db.QueryRowContext(ctx, getCurrentTapeId)
-	var tape_id int32
-	err := row.Scan(&tape_id)
-	return tape_id, err
+type GetCurrentScreeningRow struct {
+	ID        uuid.UUID
+	TapeID    int32
+	StartedAt time.Time
+	EndedAt   sql.NullTime
+}
+
+func (q *Queries) GetCurrentScreening(ctx context.Context) (GetCurrentScreeningRow, error) {
+	row := q.db.QueryRowContext(ctx, getCurrentScreening)
+	var i GetCurrentScreeningRow
+	err := row.Scan(
+		&i.ID,
+		&i.TapeID,
+		&i.StartedAt,
+		&i.EndedAt,
+	)
+	return i, err
 }
 
 const getMostRecentScreening = `-- name: GetMostRecentScreening :one
