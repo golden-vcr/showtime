@@ -13,6 +13,7 @@ type Queries interface {
 	GetBroadcastById(ctx context.Context, broadcastID int32) (queries.ShowtimeBroadcast, error)
 	GetScreeningsByBroadcastId(ctx context.Context, broadcastID int32) ([]queries.GetScreeningsByBroadcastIdRow, error)
 	GetViewerLookupForBroadcast(ctx context.Context, broadcastID int32) ([]queries.GetViewerLookupForBroadcastRow, error)
+	GetImagesForRequest(ctx context.Context, imageRequestID uuid.UUID) ([]string, error)
 }
 
 type Summary struct {

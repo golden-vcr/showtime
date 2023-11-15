@@ -382,4 +382,8 @@ func (m *mockQueries) GetViewerLookupForBroadcast(ctx context.Context, broadcast
 	return m.viewerLookupRows, nil
 }
 
+func (m *mockQueries) GetImagesForRequest(ctx context.Context, imageRequestID uuid.UUID) ([]string, error) {
+	return nil, nil
+}
+
 var _ Queries = (*mockQueries)(nil)

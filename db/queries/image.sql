@@ -38,3 +38,10 @@ insert into showtime.image (
     sqlc.arg('index'),
     sqlc.arg('url')
 );
+
+-- name: GetImagesForRequest :many
+select
+    image.url
+from showtime.image
+where image.image_request_id = sqlc.arg('image_request_id')
+order by image.index;

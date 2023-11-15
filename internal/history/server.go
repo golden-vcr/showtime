@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/golden-vcr/showtime/gen/queries"
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"golang.org/x/sync/errgroup"
 )
@@ -29,6 +30,7 @@ func (s *Server) RegisterRoutes(r *mux.Router) {
 		r.Path(root).Methods("GET").HandlerFunc(s.handleGetSummary)
 	}
 	r.Path("/{id}").Methods("GET").HandlerFunc(s.handleGetBroadcast)
+	r.Path("/images/{id}").Methods("GET").HandlerFunc(s.handleGetImages)
 }
 
 func (s *Server) handleGetSummary(res http.ResponseWriter, req *http.Request) {
@@ -158,6 +160,29 @@ func (s *Server) handleGetBroadcast(res http.ResponseWriter, req *http.Request) 
 		Screenings: screenings,
 	}
 	if err := json.NewEncoder(res).Encode(broadcast); err != nil {
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+func (s *Server) handleGetImages(res http.ResponseWriter, req *http.Request) {
+	// Figure out which image request we want to get image URLs for
+	requestIdStr, ok := mux.Vars(req)["id"]
+	if !ok || requestIdStr == "" {
+		http.Error(res, "failed to parse 'id' from URL", http.StatusInternalServerError)
+		return
+	}
+	requestId, err := uuid.Parse(requestIdStr)
+	if err != nil {
+		http.Error(res, "image request ID must be a uuid", http.StatusBadRequest)
+		return
+	}
+
+	imageUrls, err := s.q.GetImagesForRequest(req.Context(), requestId)
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if err := json.NewEncoder(res).Encode(imageUrls); err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 	}
 }
