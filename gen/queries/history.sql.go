@@ -43,6 +43,8 @@ select
                 ))
             from showtime.image_request
             where image_request.screening_id = screening.id
+                and image_request.finished_at is not null
+                and image_request.error_message is null
         ),
         '[]'::json
     )::json as image_requests
