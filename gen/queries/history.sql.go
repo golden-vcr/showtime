@@ -8,6 +8,7 @@ package queries
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"time"
 
 	"github.com/lib/pq"
@@ -44,7 +45,7 @@ select
             where image_request.screening_id = screening.id
         ),
         '[]'::json
-    ) as image_requests
+    )::json as image_requests
 from showtime.screening
 where screening.broadcast_id = $1
 order by screening.started_at
@@ -54,7 +55,7 @@ type GetScreeningsByBroadcastIdRow struct {
 	TapeID        int32
 	StartedAt     time.Time
 	EndedAt       sql.NullTime
-	ImageRequests interface{}
+	ImageRequests json.RawMessage
 }
 
 func (q *Queries) GetScreeningsByBroadcastId(ctx context.Context, broadcastID int32) ([]GetScreeningsByBroadcastIdRow, error) {

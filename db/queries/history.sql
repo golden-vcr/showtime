@@ -32,7 +32,7 @@ select
             where image_request.screening_id = screening.id
         ),
         '[]'::json
-    ) as image_requests
+    )::json as image_requests
 from showtime.screening
 where screening.broadcast_id = sqlc.arg('broadcast_id')
 order by screening.started_at;
