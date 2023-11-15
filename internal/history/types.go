@@ -5,12 +5,14 @@ import (
 	"time"
 
 	"github.com/golden-vcr/showtime/gen/queries"
+	"github.com/google/uuid"
 )
 
 type Queries interface {
 	GetTapeScreeningHistory(ctx context.Context) ([]queries.GetTapeScreeningHistoryRow, error)
 	GetBroadcastById(ctx context.Context, broadcastID int32) (queries.ShowtimeBroadcast, error)
-	GetScreeningsByBroadcastId(ctx context.Context, broadcastID int32) ([]queries.ShowtimeScreening, error)
+	GetScreeningsByBroadcastId(ctx context.Context, broadcastID int32) ([]queries.GetScreeningsByBroadcastIdRow, error)
+	GetViewerLookupForBroadcast(ctx context.Context, broadcastID int32) ([]queries.GetViewerLookupForBroadcastRow, error)
 }
 
 type Summary struct {
@@ -25,7 +27,14 @@ type Broadcast struct {
 }
 
 type Screening struct {
-	TapeId    int        `json:"tapeId"`
-	StartedAt time.Time  `json:"startedAt"`
-	EndedAt   *time.Time `json:"endedAt"`
+	TapeId        int            `json:"tapeId"`
+	StartedAt     time.Time      `json:"startedAt"`
+	EndedAt       *time.Time     `json:"endedAt"`
+	ImageRequests []ImageRequest `json:"imageRequests"`
+}
+
+type ImageRequest struct {
+	Id       uuid.UUID `json:"id"`
+	Username string    `json:"username"`
+	Subject  string    `json:"subject"`
 }

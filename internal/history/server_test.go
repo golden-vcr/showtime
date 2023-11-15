@@ -3,6 +3,7 @@ package history
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -13,6 +14,7 @@ import (
 	"time"
 
 	"github.com/golden-vcr/showtime/gen/queries"
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
 )
@@ -135,7 +137,73 @@ func Test_Server_handleGetBroadcast(t *testing.T) {
 			},
 			1,
 			http.StatusOK,
-			`{"id":1,"startedAt":"1997-09-01T12:00:00Z","endedAt":"1997-09-01T14:00:00Z","screenings":[{"tapeId":44,"startedAt":"1997-09-01T12:15:00Z","endedAt":"1997-09-01T12:45:00Z"},{"tapeId":22,"startedAt":"1997-09-01T12:55:00Z","endedAt":"1997-09-01T13:30:00Z"}]}`,
+			`{"id":1,"startedAt":"1997-09-01T12:00:00Z","endedAt":"1997-09-01T14:00:00Z","screenings":[{"tapeId":44,"startedAt":"1997-09-01T12:15:00Z","endedAt":"1997-09-01T12:45:00Z","imageRequests":[]},{"tapeId":22,"startedAt":"1997-09-01T12:55:00Z","endedAt":"1997-09-01T13:30:00Z","imageRequests":[]}]}`,
+		},
+		{
+			"image requests made during each screening are reported",
+			&mockQueries{
+				broadcasts: []mockBroadcast{
+					{
+						id:        1,
+						startedAt: time.Date(1997, 9, 1, 12, 0, 0, 0, time.UTC),
+						endedAt:   sql.NullTime{Valid: true, Time: time.Date(1997, 9, 1, 14, 0, 0, 0, time.UTC)},
+					},
+				},
+				screenings: []mockScreening{
+					{
+						broadcastId: 1,
+						tapeId:      44,
+						startedAt:   time.Date(1997, 9, 1, 12, 15, 0, 0, time.UTC),
+						endedAt:     sql.NullTime{Valid: true, Time: time.Date(1997, 9, 1, 12, 45, 0, 0, time.UTC)},
+						imageRequests: []imageRequestSummary{
+							{
+								Id:           uuid.MustParse("4c511c13-e4e6-48eb-94e2-45beed2fd11c"),
+								TwitchUserId: "1234",
+								Subject:      "a big rock",
+							},
+						},
+					},
+				},
+			},
+			1,
+			http.StatusOK,
+			`{"id":1,"startedAt":"1997-09-01T12:00:00Z","endedAt":"1997-09-01T14:00:00Z","screenings":[{"tapeId":44,"startedAt":"1997-09-01T12:15:00Z","endedAt":"1997-09-01T12:45:00Z","imageRequests":[{"id":"4c511c13-e4e6-48eb-94e2-45beed2fd11c","username":"User 1234","subject":"a big rock"}]}]}`,
+		},
+		{
+			"twitch display names are resolved from  user ids for image requests",
+			&mockQueries{
+				broadcasts: []mockBroadcast{
+					{
+						id:        1,
+						startedAt: time.Date(1997, 9, 1, 12, 0, 0, 0, time.UTC),
+						endedAt:   sql.NullTime{Valid: true, Time: time.Date(1997, 9, 1, 14, 0, 0, 0, time.UTC)},
+					},
+				},
+				screenings: []mockScreening{
+					{
+						broadcastId: 1,
+						tapeId:      44,
+						startedAt:   time.Date(1997, 9, 1, 12, 15, 0, 0, time.UTC),
+						endedAt:     sql.NullTime{Valid: true, Time: time.Date(1997, 9, 1, 12, 45, 0, 0, time.UTC)},
+						imageRequests: []imageRequestSummary{
+							{
+								Id:           uuid.MustParse("4c511c13-e4e6-48eb-94e2-45beed2fd11c"),
+								TwitchUserId: "1234",
+								Subject:      "a big rock",
+							},
+						},
+					},
+				},
+				viewerLookupRows: []queries.GetViewerLookupForBroadcastRow{
+					{
+						TwitchUserID:      "1234",
+						TwitchDisplayName: "PersonMan",
+					},
+				},
+			},
+			1,
+			http.StatusOK,
+			`{"id":1,"startedAt":"1997-09-01T12:00:00Z","endedAt":"1997-09-01T14:00:00Z","screenings":[{"tapeId":44,"startedAt":"1997-09-01T12:15:00Z","endedAt":"1997-09-01T12:45:00Z","imageRequests":[{"id":"4c511c13-e4e6-48eb-94e2-45beed2fd11c","username":"PersonMan","subject":"a big rock"}]}]}`,
 		},
 		{
 			"if screening end time is invalid, broadcast end time is substituted",
@@ -157,7 +225,7 @@ func Test_Server_handleGetBroadcast(t *testing.T) {
 			},
 			1,
 			http.StatusOK,
-			`{"id":1,"startedAt":"1997-09-01T12:00:00Z","endedAt":"1997-09-01T14:00:00Z","screenings":[{"tapeId":44,"startedAt":"1997-09-01T12:15:00Z","endedAt":"1997-09-01T14:00:00Z"}]}`,
+			`{"id":1,"startedAt":"1997-09-01T12:00:00Z","endedAt":"1997-09-01T14:00:00Z","screenings":[{"tapeId":44,"startedAt":"1997-09-01T12:15:00Z","endedAt":"1997-09-01T14:00:00Z","imageRequests":[]}]}`,
 		},
 		{
 			"if broadcast is in progress, Broadcast.endedAt is null and Screening.endedAt may be null as well",
@@ -178,7 +246,7 @@ func Test_Server_handleGetBroadcast(t *testing.T) {
 			},
 			1,
 			http.StatusOK,
-			`{"id":1,"startedAt":"1997-09-01T12:00:00Z","endedAt":null,"screenings":[{"tapeId":44,"startedAt":"1997-09-01T12:15:00Z","endedAt":null}]}`,
+			`{"id":1,"startedAt":"1997-09-01T12:00:00Z","endedAt":null,"screenings":[{"tapeId":44,"startedAt":"1997-09-01T12:15:00Z","endedAt":null,"imageRequests":[]}]}`,
 		},
 		{
 			"invalid broadcast ID is a 404",
@@ -215,9 +283,10 @@ func Test_Server_handleGetBroadcast(t *testing.T) {
 }
 
 type mockQueries struct {
-	err        error
-	broadcasts []mockBroadcast
-	screenings []mockScreening
+	err              error
+	broadcasts       []mockBroadcast
+	screenings       []mockScreening
+	viewerLookupRows []queries.GetViewerLookupForBroadcastRow
 }
 
 type mockBroadcast struct {
@@ -227,10 +296,11 @@ type mockBroadcast struct {
 }
 
 type mockScreening struct {
-	broadcastId int32
-	tapeId      int32
-	startedAt   time.Time
-	endedAt     sql.NullTime
+	broadcastId   int32
+	tapeId        int32
+	startedAt     time.Time
+	endedAt       sql.NullTime
+	imageRequests []imageRequestSummary
 }
 
 func (m *mockQueries) GetTapeScreeningHistory(ctx context.Context) ([]queries.GetTapeScreeningHistoryRow, error) {
@@ -283,22 +353,33 @@ func (m *mockQueries) GetBroadcastById(ctx context.Context, broadcastID int32) (
 	return queries.ShowtimeBroadcast{}, sql.ErrNoRows
 }
 
-func (m *mockQueries) GetScreeningsByBroadcastId(ctx context.Context, broadcastID int32) ([]queries.ShowtimeScreening, error) {
+func (m *mockQueries) GetScreeningsByBroadcastId(ctx context.Context, broadcastID int32) ([]queries.GetScreeningsByBroadcastIdRow, error) {
 	if m.err != nil {
 		return nil, m.err
 	}
-	rows := make([]queries.ShowtimeScreening, 0)
+	rows := make([]queries.GetScreeningsByBroadcastIdRow, 0)
 	for _, s := range m.screenings {
 		if s.broadcastId == broadcastID {
-			rows = append(rows, queries.ShowtimeScreening{
-				BroadcastID: s.broadcastId,
-				TapeID:      s.tapeId,
-				StartedAt:   s.startedAt,
-				EndedAt:     s.endedAt,
+			summaries, err := json.Marshal(s.imageRequests)
+			if err != nil {
+				return nil, err
+			}
+			rows = append(rows, queries.GetScreeningsByBroadcastIdRow{
+				TapeID:        s.tapeId,
+				StartedAt:     s.startedAt,
+				EndedAt:       s.endedAt,
+				ImageRequests: summaries,
 			})
 		}
 	}
 	return rows, nil
+}
+
+func (m *mockQueries) GetViewerLookupForBroadcast(ctx context.Context, broadcastID int32) ([]queries.GetViewerLookupForBroadcastRow, error) {
+	if m.err != nil {
+		return nil, m.err
+	}
+	return m.viewerLookupRows, nil
 }
 
 var _ Queries = (*mockQueries)(nil)

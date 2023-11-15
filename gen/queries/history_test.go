@@ -116,3 +116,45 @@ func Test_GetScreeningsByBroadcastId(t *testing.T) {
 	assert.Equal(t, 45*time.Minute, screenings[0].EndedAt.Time.Sub(screenings[0].StartedAt))
 	assert.Equal(t, 30*time.Minute, screenings[1].EndedAt.Time.Sub(screenings[1].StartedAt))
 }
+
+func Test_GetViewerLookupForBroadcast(t *testing.T) {
+	tx := querytest.PrepareTx(t)
+	q := queries.New(tx)
+
+	_, err := tx.Exec(`INSERT INTO showtime.broadcast (id, started_at, ended_at) VALUES (
+		1,
+		now() - '12h'::interval,
+		now() - '10h'::interval
+	)`)
+	assert.NoError(t, err)
+
+	_, err = tx.Exec(`INSERT INTO showtime.screening (id, broadcast_id, tape_id, started_at, ended_at) VALUES (
+		'effec22c-c0d1-429b-a91e-9248e069e19a',
+		1,
+		44,
+		now() - '11h30m'::interval,
+		now() - '11h'::interval
+	)`)
+	assert.NoError(t, err)
+
+	_, err = tx.Exec(`
+		INSERT INTO showtime.viewer (twitch_user_id, twitch_display_name) VALUES
+			('51234', 'triangle_man'),
+			('99009', 'UniverseMan')
+	`)
+	assert.NoError(t, err)
+
+	_, err = tx.Exec(`
+		INSERT INTO showtime.image_request (id, twitch_user_id, subject_noun_clause, prompt, screening_id) VALUES
+			('e5f4b298-99c8-4f81-aada-1132e74f1d6d', '51234', 'foo', 'foobar', 'effec22c-c0d1-429b-a91e-9248e069e19a'),
+			('54d3fdd8-5234-4b80-8acc-6b9dca28aac6', '99009', 'foo', 'foobar', 'effec22c-c0d1-429b-a91e-9248e069e19a')
+	`)
+	assert.NoError(t, err)
+
+	rows, err := q.GetViewerLookupForBroadcast(context.Background(), 1)
+	assert.NoError(t, err)
+	assert.ElementsMatch(t, rows, []queries.GetViewerLookupForBroadcastRow{
+		{TwitchUserID: "51234", TwitchDisplayName: "triangle_man"},
+		{TwitchUserID: "99009", TwitchDisplayName: "UniverseMan"},
+	})
+}

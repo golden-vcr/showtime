@@ -2,12 +2,14 @@
 insert into showtime.image_request (
     id,
     twitch_user_id,
+    screening_id,
     subject_noun_clause,
     prompt,
     created_at
 ) values (
     sqlc.arg('image_request_id'),
     sqlc.arg('twitch_user_id'),
+    sqlc.narg('screening_id'),
     sqlc.arg('subject_noun_clause'),
     sqlc.arg('prompt'),
     now()
