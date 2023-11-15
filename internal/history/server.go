@@ -99,10 +99,27 @@ func (s *Server) handleGetBroadcast(res http.ResponseWriter, req *http.Request) 
 			screeningEndedAt = &broadcastRow.EndedAt.Time
 		}
 
+		// The 'image_requests' JSON payload should be an array of objects that conform
+		// to imageRequestSummary
+		var summaries []imageRequestSummary
+		if err := json.Unmarshal(screeningRows[i].ImageRequests, &summaries); err != nil {
+			http.Error(res, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		imageRequests := make([]ImageRequest, 0, len(summaries))
+		for _, summary := range summaries {
+			imageRequests = append(imageRequests, ImageRequest{
+				Id:       summary.Id,
+				Username: fmt.Sprintf("User %s", summary.TwitchUserId),
+				Subject:  summary.Subject,
+			})
+		}
+
 		screenings = append(screenings, Screening{
-			TapeId:    int(screeningRows[i].TapeID),
-			StartedAt: screeningRows[i].StartedAt,
-			EndedAt:   screeningEndedAt,
+			TapeId:        int(screeningRows[i].TapeID),
+			StartedAt:     screeningRows[i].StartedAt,
+			EndedAt:       screeningEndedAt,
+			ImageRequests: imageRequests,
 		})
 	}
 	var broadcastEndedAt *time.Time
