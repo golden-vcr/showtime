@@ -7,6 +7,8 @@ package queries
 
 import (
 	"context"
+	"database/sql"
+	"time"
 
 	"github.com/lib/pq"
 )
@@ -27,26 +29,48 @@ func (q *Queries) GetBroadcastById(ctx context.Context, broadcastID int32) (Show
 
 const getScreeningsByBroadcastId = `-- name: GetScreeningsByBroadcastId :many
 select
-    broadcast_id, tape_id, started_at, ended_at
+    screening.tape_id,
+    screening.started_at,
+    screening.ended_at,
+    coalesce(
+        (
+            select json_agg(
+                json_build_object(
+                    'id', image_request.id,
+                    'twitch_user_id', twitch_user_id,
+                    'subject', subject_noun_clause
+                ))
+            from showtime.image_request
+            where image_request.screening_id = screening.id
+        ),
+        '[]'::json
+    ) as image_requests
 from showtime.screening
 where screening.broadcast_id = $1
 order by screening.started_at
 `
 
-func (q *Queries) GetScreeningsByBroadcastId(ctx context.Context, broadcastID int32) ([]ShowtimeScreening, error) {
+type GetScreeningsByBroadcastIdRow struct {
+	TapeID        int32
+	StartedAt     time.Time
+	EndedAt       sql.NullTime
+	ImageRequests interface{}
+}
+
+func (q *Queries) GetScreeningsByBroadcastId(ctx context.Context, broadcastID int32) ([]GetScreeningsByBroadcastIdRow, error) {
 	rows, err := q.db.QueryContext(ctx, getScreeningsByBroadcastId, broadcastID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []ShowtimeScreening
+	var items []GetScreeningsByBroadcastIdRow
 	for rows.Next() {
-		var i ShowtimeScreening
+		var i GetScreeningsByBroadcastIdRow
 		if err := rows.Scan(
-			&i.BroadcastID,
 			&i.TapeID,
 			&i.StartedAt,
 			&i.EndedAt,
+			&i.ImageRequests,
 		); err != nil {
 			return nil, err
 		}

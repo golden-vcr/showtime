@@ -47,6 +47,8 @@ type ShowtimeImageRequest struct {
 	FinishedAt sql.NullTime
 	// Error message describing why the request completed unsuccessfully. If NULL and finished_at is not NULL, the request completed successfully.
 	ErrorMessage sql.NullString
+	// ID of the screening that was active when the image request was submitted; may be null if the request was submitted while no tape was active.
+	ScreeningID uuid.NullUUID
 }
 
 // Records the fact that a particular tape was played during a broadcast.
@@ -59,6 +61,8 @@ type ShowtimeScreening struct {
 	StartedAt time.Time
 	// Time at which the screening ended, if it's not stil ongoing.
 	EndedAt sql.NullTime
+	// Unique ID for this screening; used chiefly to associate other data with this screening.
+	ID uuid.NullUUID
 }
 
 // Details about a user who has interacted with Golden VCR at some point, either directly via goldenvcr.com or via Twitch.

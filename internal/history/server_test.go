@@ -283,18 +283,17 @@ func (m *mockQueries) GetBroadcastById(ctx context.Context, broadcastID int32) (
 	return queries.ShowtimeBroadcast{}, sql.ErrNoRows
 }
 
-func (m *mockQueries) GetScreeningsByBroadcastId(ctx context.Context, broadcastID int32) ([]queries.ShowtimeScreening, error) {
+func (m *mockQueries) GetScreeningsByBroadcastId(ctx context.Context, broadcastID int32) ([]queries.GetScreeningsByBroadcastIdRow, error) {
 	if m.err != nil {
 		return nil, m.err
 	}
-	rows := make([]queries.ShowtimeScreening, 0)
+	rows := make([]queries.GetScreeningsByBroadcastIdRow, 0)
 	for _, s := range m.screenings {
 		if s.broadcastId == broadcastID {
-			rows = append(rows, queries.ShowtimeScreening{
-				BroadcastID: s.broadcastId,
-				TapeID:      s.tapeId,
-				StartedAt:   s.startedAt,
-				EndedAt:     s.endedAt,
+			rows = append(rows, queries.GetScreeningsByBroadcastIdRow{
+				TapeID:    s.tapeId,
+				StartedAt: s.startedAt,
+				EndedAt:   s.endedAt,
 			})
 		}
 	}
