@@ -125,3 +125,46 @@ func (q *Queries) GetTapeScreeningHistory(ctx context.Context) ([]GetTapeScreeni
 	}
 	return items, nil
 }
+
+const getViewerLookupForBroadcast = `-- name: GetViewerLookupForBroadcast :many
+select
+    viewer.twitch_user_id,
+    viewer.twitch_display_name
+from showtime.viewer
+where viewer.twitch_user_id in (
+    select distinct image_request.twitch_user_id
+    from showtime.image_request
+    where image_request.screening_id in (
+        select screening.id from showtime.screening
+        where screening.broadcast_id = $1
+    )
+)
+`
+
+type GetViewerLookupForBroadcastRow struct {
+	TwitchUserID      string
+	TwitchDisplayName string
+}
+
+func (q *Queries) GetViewerLookupForBroadcast(ctx context.Context, broadcastID int32) ([]GetViewerLookupForBroadcastRow, error) {
+	rows, err := q.db.QueryContext(ctx, getViewerLookupForBroadcast, broadcastID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetViewerLookupForBroadcastRow
+	for rows.Next() {
+		var i GetViewerLookupForBroadcastRow
+		if err := rows.Scan(&i.TwitchUserID, &i.TwitchDisplayName); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

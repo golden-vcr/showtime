@@ -36,3 +36,17 @@ select
 from showtime.screening
 where screening.broadcast_id = sqlc.arg('broadcast_id')
 order by screening.started_at;
+
+-- name: GetViewerLookupForBroadcast :many
+select
+    viewer.twitch_user_id,
+    viewer.twitch_display_name
+from showtime.viewer
+where viewer.twitch_user_id in (
+    select distinct image_request.twitch_user_id
+    from showtime.image_request
+    where image_request.screening_id in (
+        select screening.id from showtime.screening
+        where screening.broadcast_id = sqlc.arg('broadcast_id')
+    )
+);
