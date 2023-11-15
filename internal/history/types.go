@@ -12,6 +12,7 @@ type Queries interface {
 	GetTapeScreeningHistory(ctx context.Context) ([]queries.GetTapeScreeningHistoryRow, error)
 	GetBroadcastById(ctx context.Context, broadcastID int32) (queries.ShowtimeBroadcast, error)
 	GetScreeningsByBroadcastId(ctx context.Context, broadcastID int32) ([]queries.GetScreeningsByBroadcastIdRow, error)
+	GetViewerLookupForBroadcast(ctx context.Context, broadcastID int32) ([]queries.GetViewerLookupForBroadcastRow, error)
 }
 
 type Summary struct {

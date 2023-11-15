@@ -11,6 +11,7 @@ import (
 
 	"github.com/golden-vcr/showtime/gen/queries"
 	"github.com/gorilla/mux"
+	"golang.org/x/sync/errgroup"
 )
 
 type Server struct {
@@ -79,12 +80,36 @@ func (s *Server) handleGetBroadcast(res http.ResponseWriter, req *http.Request) 
 		return
 	}
 
-	// Find all screeningRows recorded within that broadcast
-	screeningRows, err := s.q.GetScreeningsByBroadcastId(req.Context(), broadcastRow.ID)
-	if err != nil {
+	// Run two queries concurrently to get the data we need for this request: all the
+	// screenings recorded within that broadcast (including image request summaries
+	// etc.), along with a lookup that maps Twitch User IDs to display names
+	screeningsChan := make(chan []queries.GetScreeningsByBroadcastIdRow, 1)
+	viewerLookupChan := make(chan []queries.GetViewerLookupForBroadcastRow, 1)
+	wg, queryCtx := errgroup.WithContext(req.Context())
+	wg.Go(func() error {
+		// Find all screening rows recorded within the broadcast
+		screeningRows, err := s.q.GetScreeningsByBroadcastId(queryCtx, broadcastRow.ID)
+		if err != nil {
+			return err
+		}
+		screeningsChan <- screeningRows
+		return nil
+	})
+	wg.Go(func() error {
+		// Get a lookup of twitch user IDs to names
+		viewerLookupRows, err := s.q.GetViewerLookupForBroadcast(queryCtx, broadcastRow.ID)
+		if err != nil {
+			return err
+		}
+		viewerLookupChan <- viewerLookupRows
+		return nil
+	})
+	if err := wg.Wait(); err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	screeningRows := <-screeningsChan
+	viewerLookupRows := <-viewerLookupChan
 
 	// Build a result struct and return it as JSON
 	screenings := make([]Screening, 0, len(screeningRows))
@@ -110,7 +135,7 @@ func (s *Server) handleGetBroadcast(res http.ResponseWriter, req *http.Request) 
 		for _, summary := range summaries {
 			imageRequests = append(imageRequests, ImageRequest{
 				Id:       summary.Id,
-				Username: fmt.Sprintf("User %s", summary.TwitchUserId),
+				Username: formatUsername(viewerLookupRows, summary.TwitchUserId),
 				Subject:  summary.Subject,
 			})
 		}
@@ -135,4 +160,13 @@ func (s *Server) handleGetBroadcast(res http.ResponseWriter, req *http.Request) 
 	if err := json.NewEncoder(res).Encode(broadcast); err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 	}
+}
+
+func formatUsername(viewerLookupRows []queries.GetViewerLookupForBroadcastRow, twitchUserId string) string {
+	for _, row := range viewerLookupRows {
+		if row.TwitchUserID == twitchUserId {
+			return row.TwitchDisplayName
+		}
+	}
+	return fmt.Sprintf("User %s", twitchUserId)
 }
