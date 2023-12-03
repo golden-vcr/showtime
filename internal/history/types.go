@@ -25,6 +25,7 @@ type Broadcast struct {
 	StartedAt  time.Time   `json:"startedAt"`
 	EndedAt    *time.Time  `json:"endedAt"`
 	Screenings []Screening `json:"screenings"`
+	VodUrl     string      `json:"vodUrl,omitempty"`
 }
 
 type Screening struct {

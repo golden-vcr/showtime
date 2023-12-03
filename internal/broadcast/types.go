@@ -8,7 +8,7 @@ import (
 )
 
 type Queries interface {
-	GetMostRecentBroadcast(ctx context.Context) (queries.ShowtimeBroadcast, error)
+	GetMostRecentBroadcast(ctx context.Context) (queries.GetMostRecentBroadcastRow, error)
 	GetMostRecentScreening(ctx context.Context, broadcastID int32) (queries.GetMostRecentScreeningRow, error)
 }
 

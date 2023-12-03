@@ -16,7 +16,7 @@ import (
 
 const getBroadcastById = `-- name: GetBroadcastById :one
 select
-    id, started_at, ended_at
+    id, started_at, ended_at, vod_url
 from showtime.broadcast
 where broadcast.id = $1
 `
@@ -24,7 +24,12 @@ where broadcast.id = $1
 func (q *Queries) GetBroadcastById(ctx context.Context, broadcastID int32) (ShowtimeBroadcast, error) {
 	row := q.db.QueryRowContext(ctx, getBroadcastById, broadcastID)
 	var i ShowtimeBroadcast
-	err := row.Scan(&i.ID, &i.StartedAt, &i.EndedAt)
+	err := row.Scan(
+		&i.ID,
+		&i.StartedAt,
+		&i.EndedAt,
+		&i.VodUrl,
+	)
 	return i, err
 }
 

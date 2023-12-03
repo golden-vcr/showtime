@@ -70,7 +70,7 @@ func (h *Handler) handleStreamOfflineEvent(ctx context.Context, data json.RawMes
 	return nil
 }
 
-func getMostRecentBroadcast(ctx context.Context, q *queries.Queries) (*queries.ShowtimeBroadcast, error) {
+func getMostRecentBroadcast(ctx context.Context, q *queries.Queries) (*queries.GetMostRecentBroadcastRow, error) {
 	result, err := q.GetMostRecentBroadcast(ctx)
 	if err != nil {
 		if err == sql.ErrNoRows {

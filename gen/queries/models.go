@@ -19,6 +19,8 @@ type ShowtimeBroadcast struct {
 	StartedAt time.Time
 	// Time at which the broadcast ended, if it's not still live. To account for the possibility of brief disruptions in internet service (or Twitch availability), it's possible to resume a broadcast once it's ended: a non-NULL ended_at timestamp does not definitively indicate that broadcast is done for good.
 	EndedAt sql.NullTime
+	// Absolute URL to a page where the recording of this broadcast can be viewed, if available.
+	VodUrl sql.NullString
 }
 
 // Record of an image that was successfully generated from a user-submitted image request. An image request may result in multiple images. Images are ordered by index, matching the array in which they were returned by the image generation API.

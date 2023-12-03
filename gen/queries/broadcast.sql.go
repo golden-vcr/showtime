@@ -7,6 +7,8 @@ package queries
 
 import (
 	"context"
+	"database/sql"
+	"time"
 )
 
 const getMostRecentBroadcast = `-- name: GetMostRecentBroadcast :one
@@ -19,9 +21,15 @@ order by broadcast.started_at desc
 limit 1
 `
 
-func (q *Queries) GetMostRecentBroadcast(ctx context.Context) (ShowtimeBroadcast, error) {
+type GetMostRecentBroadcastRow struct {
+	ID        int32
+	StartedAt time.Time
+	EndedAt   sql.NullTime
+}
+
+func (q *Queries) GetMostRecentBroadcast(ctx context.Context) (GetMostRecentBroadcastRow, error) {
 	row := q.db.QueryRowContext(ctx, getMostRecentBroadcast)
-	var i ShowtimeBroadcast
+	var i GetMostRecentBroadcastRow
 	err := row.Scan(&i.ID, &i.StartedAt, &i.EndedAt)
 	return i, err
 }

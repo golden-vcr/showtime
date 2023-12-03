@@ -153,11 +153,16 @@ func (s *Server) handleGetBroadcast(res http.ResponseWriter, req *http.Request) 
 	if broadcastRow.EndedAt.Valid {
 		broadcastEndedAt = &broadcastRow.EndedAt.Time
 	}
+	vodUrl := ""
+	if broadcastRow.VodUrl.Valid {
+		vodUrl = broadcastRow.VodUrl.String
+	}
 	broadcast := Broadcast{
 		Id:         int(broadcastRow.ID),
 		StartedAt:  broadcastRow.StartedAt,
 		EndedAt:    broadcastEndedAt,
 		Screenings: screenings,
+		VodUrl:     vodUrl,
 	}
 	if err := json.NewEncoder(res).Encode(broadcast); err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
