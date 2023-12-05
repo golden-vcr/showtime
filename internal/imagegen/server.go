@@ -24,7 +24,7 @@ const MaxSubjectLen = 120
 const NumImagesToGeneratePerPrompt = 4
 
 const ImageAlertType = "image-generation"
-const ImageAlertPointsCost = 500
+const ImageAlertPointsCost = 200
 
 type Server struct {
 	q          Queries
