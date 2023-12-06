@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 
+	"github.com/golden-vcr/ledger"
 	"github.com/golden-vcr/showtime/gen/queries"
 	"github.com/golden-vcr/showtime/internal/alerts"
 	"github.com/nicklaw5/helix/v2"
@@ -13,14 +14,16 @@ import (
 var ErrUnsupportedEventType = errors.New("unsupported event type")
 
 type Handler struct {
-	q          *queries.Queries
-	alertsChan chan *alerts.Alert
+	q            *queries.Queries
+	alertsChan   chan *alerts.Alert
+	ledgerClient ledger.Client
 }
 
-func NewHandler(ctx context.Context, q *queries.Queries, alertsChan chan *alerts.Alert) *Handler {
+func NewHandler(ctx context.Context, q *queries.Queries, alertsChan chan *alerts.Alert, ledgerClient ledger.Client) *Handler {
 	return &Handler{
-		q:          q,
-		alertsChan: alertsChan,
+		q:            q,
+		alertsChan:   alertsChan,
+		ledgerClient: ledgerClient,
 	}
 }
 
@@ -34,6 +37,8 @@ func (h *Handler) HandleEvent(ctx context.Context, subscription *helix.EventSubS
 		return h.handleChannelFollowEvent(ctx, data)
 	case helix.EventSubTypeChannelRaid:
 		return h.handleChannelRaidEvent(ctx, data)
+	case helix.EventSubTypeChannelCheer:
+		return h.handleChannelCheerEvent(ctx, data)
 	default:
 		return ErrUnsupportedEventType
 	}

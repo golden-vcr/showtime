@@ -47,4 +47,14 @@ var RequiredSubscriptions = []events.RequiredSubscription{
 			ToBroadcasterUserID: "{{.ChannelUserId}}",
 		},
 	},
+	{
+		Type:    helix.EventSubTypeChannelCheer,
+		Version: "1",
+		TemplatedCondition: helix.EventSubCondition{
+			BroadcasterUserID: "{{.ChannelUserId}}",
+		},
+		RequiredScopes: []string{
+			"bits:read",
+		},
+	},
 }

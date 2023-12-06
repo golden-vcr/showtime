@@ -19,10 +19,16 @@ github.com/golden-vcr/ledger v0.1.1 h1:3nio9oHxJebwsBxNhlWNTmJ5Kov0A9Cwluab4saeI
 github.com/golden-vcr/ledger v0.1.1/go.mod h1:hRbYuPIhFhvl0DpqJQFBQrirZbgsKY0XCXb4IXPrTSw=
 github.com/golden-vcr/ledger v0.1.2 h1:VoM0zI0d++6NljwxHc4JdVFRO00Z7d3XzlcKhlqDU0c=
 github.com/golden-vcr/ledger v0.1.2/go.mod h1:hRbYuPIhFhvl0DpqJQFBQrirZbgsKY0XCXb4IXPrTSw=
+github.com/golden-vcr/ledger v0.2.0 h1:d7K6JLN9TN0lySOaPWOUTWzdmlbEG6IaDcG8XZhS7BA=
+github.com/golden-vcr/ledger v0.2.0/go.mod h1:hRbYuPIhFhvl0DpqJQFBQrirZbgsKY0XCXb4IXPrTSw=
+github.com/golden-vcr/ledger v0.2.1 h1:ib8ss/Axf317AhseVPW9ZaliysM0eo9e+XcYcgRakfQ=
+github.com/golden-vcr/ledger v0.2.1/go.mod h1:hRbYuPIhFhvl0DpqJQFBQrirZbgsKY0XCXb4IXPrTSw=
 github.com/golden-vcr/server-common v0.3.0 h1:BZfr+VezE8X3e+Uh/up7hVv766j98CAcMfaIlewoEIU=
 github.com/golden-vcr/server-common v0.3.0/go.mod h1:BnDmeVjFiwkWHJIshKNRU3P16nDIXl53aSMdQTP5vzs=
 github.com/google/uuid v1.3.1 h1:KjJaJ9iWZ3jOFZIf1Lqf4laDRCasjl0BCmnEGxkdLb4=
 github.com/google/uuid v1.3.1/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
+github.com/google/uuid v1.4.0 h1:MtMxsa51/r9yyhkyLsVeVt0B+BGQZzpQiTQ4eHZ8bc4=
+github.com/google/uuid v1.4.0/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
 github.com/gorilla/mux v1.8.0 h1:i40aqfkR1h2SlN9hojwV5ZA91wcXFOvkdNIeFDP5koI=
 github.com/gorilla/mux v1.8.0/go.mod h1:DVbg23sWSpFRCP0SfiEN6jmj59UnW/n46BH5rLB71So=
 github.com/jmespath/go-jmespath v0.4.0 h1:BEgLn5cpjn8UN1mAw4NjwDrS35OdebyEtFe+9YPoQUg=

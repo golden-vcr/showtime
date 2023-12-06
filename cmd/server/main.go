@@ -63,6 +63,8 @@ type Config struct {
 	DatabaseUser     string `env:"PGUSER" required:"true"`
 	DatabasePassword string `env:"PGPASSWORD" required:"true"`
 	DatabaseSslMode  string `env:"PGSSLMODE"`
+
+	LedgerShowtimeSecretKey string `env:"LEDGER_SHOWTIME_SECRET_KEY"`
 }
 
 func main() {
@@ -135,7 +137,7 @@ func main() {
 	// client in order to perform operations that require deducting Golden VCR Fun
 	// Points from the auth'd user's balance
 	authClient := auth.NewClient(config.AuthURL)
-	ledgerClient := ledger.NewClient(config.LedgerURL)
+	ledgerClient := ledger.NewClient(config.LedgerURL, config.LedgerShowtimeSecretKey)
 
 	// Prepare a Twitch client and use it to get the user ID for the configured channel,
 	// so we can identify the broadcaster
@@ -158,7 +160,7 @@ func main() {
 		// events.Handler gets called in response to EventSub notifications, and
 		// whenever it decides that we should broadcast an alert, it write a new
 		// alert.Alert into alertsChan
-		eventsHandler := events.NewHandler(ctx, q, alertsChan)
+		eventsHandler := events.NewHandler(ctx, q, alertsChan, ledgerClient)
 
 		// events.Server implements the POST callback that Twitch hits (once we've run
 		// cmd/init/main.go to create all EventSub notifications mandated by events.go)

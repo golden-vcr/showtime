@@ -26,6 +26,7 @@ simply open a shell there and run:
 - `terraform output -raw twitch_api_env > ../showtime/.env`
 - `terraform output -raw openai_api_env >> ../showtime/.env`
 - `terraform output -raw user_images_s3_env >> ../showtime/.env`
+- `terraform output -raw ledger_s2s_auth_env >> ../showtime/.env`
 - `./local-db.sh env >> ../showtime/.env`
 
 ### Running the database
