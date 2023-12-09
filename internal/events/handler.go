@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 
+	"github.com/golden-vcr/auth"
 	"github.com/golden-vcr/ledger"
 	"github.com/golden-vcr/showtime/gen/queries"
 	"github.com/golden-vcr/showtime/internal/alerts"
@@ -14,16 +15,18 @@ import (
 var ErrUnsupportedEventType = errors.New("unsupported event type")
 
 type Handler struct {
-	q            *queries.Queries
-	alertsChan   chan *alerts.Alert
-	ledgerClient ledger.Client
+	q                 *queries.Queries
+	alertsChan        chan *alerts.Alert
+	authServiceClient auth.ServiceClient
+	ledgerClient      ledger.Client
 }
 
-func NewHandler(ctx context.Context, q *queries.Queries, alertsChan chan *alerts.Alert, ledgerClient ledger.Client) *Handler {
+func NewHandler(ctx context.Context, q *queries.Queries, alertsChan chan *alerts.Alert, authServiceClient auth.ServiceClient, ledgerClient ledger.Client) *Handler {
 	return &Handler{
-		q:            q,
-		alertsChan:   alertsChan,
-		ledgerClient: ledgerClient,
+		q:                 q,
+		alertsChan:        alertsChan,
+		authServiceClient: authServiceClient,
+		ledgerClient:      ledgerClient,
 	}
 }
 

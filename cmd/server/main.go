@@ -54,8 +54,9 @@ type Config struct {
 	SpacesAccessKeyId    string `env:"SPACES_ACCESS_KEY_ID" required:"true"`
 	SpacesSecretKey      string `env:"SPACES_SECRET_KEY" required:"true"`
 
-	AuthURL   string `env:"AUTH_URL" default:"http://localhost:5002"`
-	LedgerURL string `env:"LEDGER_URL" default:"http://localhost:5003"`
+	AuthURL          string `env:"AUTH_URL" default:"http://localhost:5002"`
+	AuthSharedSecret string `env:"AUTH_SHARED_SECRET" required:"true"`
+	LedgerURL        string `env:"LEDGER_URL" default:"http://localhost:5003"`
 
 	DatabaseHost     string `env:"PGHOST" required:"true"`
 	DatabasePort     int    `env:"PGPORT" required:"true"`
@@ -63,8 +64,6 @@ type Config struct {
 	DatabaseUser     string `env:"PGUSER" required:"true"`
 	DatabasePassword string `env:"PGPASSWORD" required:"true"`
 	DatabaseSslMode  string `env:"PGSSLMODE"`
-
-	LedgerShowtimeSecretKey string `env:"LEDGER_SHOWTIME_SECRET_KEY"`
 }
 
 func main() {
@@ -133,11 +132,19 @@ func main() {
 		}
 	}()
 
+	// We need an auth service client so that when Twitch tells us about a particular
+	// user action that should result in state changes on the Golden VCR backend, we can
+	// request a JWT that will authorize requests made against that user's state
+	authServiceClient := auth.NewServiceClient(config.AuthURL, config.AuthSharedSecret)
+
 	// We need an auth client in order to validate access tokens, and we need a ledger
 	// client in order to perform operations that require deducting Golden VCR Fun
 	// Points from the auth'd user's balance
-	authClient := auth.NewClient(config.AuthURL)
-	ledgerClient := ledger.NewClient(config.LedgerURL, config.LedgerShowtimeSecretKey)
+	authClient, err := auth.NewClient(ctx, config.AuthURL)
+	if err != nil {
+		log.Fatalf("error initializing auth client: %v", err)
+	}
+	ledgerClient := ledger.NewClient(config.LedgerURL)
 
 	// Prepare a Twitch client and use it to get the user ID for the configured channel,
 	// so we can identify the broadcaster
@@ -160,7 +167,7 @@ func main() {
 		// events.Handler gets called in response to EventSub notifications, and
 		// whenever it decides that we should broadcast an alert, it write a new
 		// alert.Alert into alertsChan
-		eventsHandler := events.NewHandler(ctx, q, alertsChan, ledgerClient)
+		eventsHandler := events.NewHandler(ctx, q, alertsChan, authServiceClient, ledgerClient)
 
 		// events.Server implements the POST callback that Twitch hits (once we've run
 		// cmd/init/main.go to create all EventSub notifications mandated by events.go)

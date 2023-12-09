@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/golden-vcr/auth"
 	"github.com/golden-vcr/showtime/gen/queries"
 	"github.com/golden-vcr/showtime/internal/alerts"
 	"github.com/nicklaw5/helix/v2"
@@ -59,11 +60,33 @@ func (h *Handler) handleChannelCheerEvent(ctx context.Context, data json.RawMess
 		return fmt.Errorf("failed to unmarshal ChannelCheerEvent: %w", err)
 	}
 
-	if !ev.IsAnonymous {
-		_, err := h.ledgerClient.RequestCreditFromCheer(ctx, ev.UserID, ev.Bits, ev.Message)
-		if err != nil {
-			return fmt.Errorf("RequestCreditFromCheer failed: %v", err)
-		}
+	// Anonymous cheers can have no effect in the backend; we can't know who to credit
+	if ev.IsAnonymous {
+		return nil
 	}
+
+	// Contact the auth server to request a short-lived JWT that will give us
+	// authoritative access to the backend resources associated with the user who gave
+	// us bits
+	accessToken, err := h.authServiceClient.RequestServiceToken(ctx, auth.ServiceTokenRequest{
+		Service: "showtime",
+		User: auth.UserDetails{
+			Id:          ev.UserID,
+			Login:       ev.UserLogin,
+			DisplayName: ev.UserName,
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("RequestServiceToken failed: %w", err)
+	}
+
+	// Supply that JWT (which is marked as 'authoritative' since it was issued to a
+	// trusted internal service) to the ledger server in order to grant the user Golden
+	// VCR Fun Points equivalent to the number of bits they cheered with
+	_, err = h.ledgerClient.RequestCreditFromCheer(ctx, accessToken, ev.Bits, ev.Message)
+	if err != nil {
+		return fmt.Errorf("RequestCreditFromCheer failed: %v", err)
+	}
+
 	return nil
 }
