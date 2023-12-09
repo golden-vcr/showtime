@@ -181,6 +181,18 @@ func buildEventPayload(subscriptionType string, channelUserId string, channelNam
 			BroadcasterUserName:  channelName,
 			FollowedAt:           helix.Time{Time: time.Now()},
 		}
+	case helix.EventSubTypeChannelCheer:
+		p = &helix.EventSubChannelCheerEvent{
+			IsAnonymous:          false,
+			UserID:               "1337",
+			UserLogin:            "bigjim",
+			UserName:             "BigJim",
+			BroadcasterUserID:    channelUserId,
+			BroadcasterUserLogin: channelName,
+			BroadcasterUserName:  channelName,
+			Message:              "ghost of a baby seal",
+			Bits:                 200,
+		}
 	default:
 		log.Fatalf("subscription type %s is not supported in buildEventPayload", subscriptionType)
 	}
