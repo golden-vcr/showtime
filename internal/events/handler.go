@@ -19,6 +19,8 @@ type Handler struct {
 	alertsChan        chan *alerts.Alert
 	authServiceClient auth.ServiceClient
 	ledgerClient      ledger.Client
+	imagegenUrl       string
+	imagegenCtx       context.Context
 }
 
 func NewHandler(ctx context.Context, q *queries.Queries, alertsChan chan *alerts.Alert, authServiceClient auth.ServiceClient, ledgerClient ledger.Client) *Handler {
@@ -27,6 +29,8 @@ func NewHandler(ctx context.Context, q *queries.Queries, alertsChan chan *alerts
 		alertsChan:        alertsChan,
 		authServiceClient: authServiceClient,
 		ledgerClient:      ledgerClient,
+		imagegenUrl:       "http://localhost:5001/image-gen",
+		imagegenCtx:       ctx,
 	}
 }
 

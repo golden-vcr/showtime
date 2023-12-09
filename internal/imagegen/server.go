@@ -206,6 +206,8 @@ func (s *Server) handleRequest(res http.ResponseWriter, req *http.Request) {
 		imageUrls = append(imageUrls, <-imageUrlsChan)
 	}
 	sort.Strings(imageUrls)
+
+	fmt.Printf("Generating an %d-image alert for user %s with subject '%s'\n", len(imageUrls), claims.User.DisplayName, payload.Subject)
 	s.alertsChan <- &alerts.Alert{
 		Type: alerts.AlertTypeGeneratedImages,
 		Data: alerts.AlertData{
