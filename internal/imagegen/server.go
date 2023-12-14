@@ -15,6 +15,7 @@ import (
 	"github.com/golden-vcr/ledger"
 	"github.com/golden-vcr/showtime/gen/queries"
 	"github.com/golden-vcr/showtime/internal/alerts"
+	"github.com/golden-vcr/showtime/internal/discord"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"golang.org/x/sync/errgroup"
@@ -27,20 +28,22 @@ const ImageAlertType = "image-generation"
 const ImageAlertPointsCost = 200
 
 type Server struct {
-	q          Queries
-	ledger     ledger.Client
-	generation GenerationClient
-	storage    StorageClient
-	alertsChan chan *alerts.Alert
+	q                 Queries
+	ledger            ledger.Client
+	generation        GenerationClient
+	storage           StorageClient
+	discordWebhookUrl string
+	alertsChan        chan *alerts.Alert
 }
 
-func NewServer(q *queries.Queries, ledger ledger.Client, generation GenerationClient, storage StorageClient, alertsChan chan *alerts.Alert) *Server {
+func NewServer(q *queries.Queries, ledger ledger.Client, generation GenerationClient, storage StorageClient, discordWebhookUrl string, alertsChan chan *alerts.Alert) *Server {
 	return &Server{
-		q:          q,
-		ledger:     ledger,
-		generation: generation,
-		storage:    storage,
-		alertsChan: alertsChan,
+		q:                 q,
+		ledger:            ledger,
+		generation:        generation,
+		storage:           storage,
+		discordWebhookUrl: discordWebhookUrl,
+		alertsChan:        alertsChan,
 	}
 }
 
@@ -208,12 +211,13 @@ func (s *Server) handleRequest(res http.ResponseWriter, req *http.Request) {
 	sort.Strings(imageUrls)
 
 	fmt.Printf("Generating an %d-image alert for user %s with subject '%s'\n", len(imageUrls), claims.User.DisplayName, payload.Subject)
+	description := payload.Subject
 	s.alertsChan <- &alerts.Alert{
 		Type: alerts.AlertTypeGeneratedImages,
 		Data: alerts.AlertData{
 			GeneratedImages: &alerts.AlertDataGeneratedImages{
 				Username:    claims.User.DisplayName,
-				Description: payload.Subject,
+				Description: description,
 				Urls:        imageUrls,
 			},
 		},
@@ -226,6 +230,18 @@ func (s *Server) handleRequest(res http.ResponseWriter, req *http.Request) {
 	if err := transaction.Accept(req.Context()); err != nil {
 		http.Error(res, fmt.Sprintf("failed to finalize transaction: %v", err), http.StatusInternalServerError)
 		return
+	}
+
+	// Don't hold up the request to do this; just initiate a fire-and-forget HTTP
+	// request to a Discord webhook, so that we can post this image to our #ghosts
+	// channel in the Discord server. If the request fails, we'll simply print an error.
+	if s.discordWebhookUrl != "" {
+		go func() {
+			err := discord.PostGhostAlert(s.discordWebhookUrl, claims.User.DisplayName, description, imageUrls[0])
+			if err != nil {
+				fmt.Printf("ERROR: Failed to post ghost alert to Discord: %v\n", err)
+			}
+		}()
 	}
 
 	res.WriteHeader(http.StatusNoContent)

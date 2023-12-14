@@ -48,6 +48,8 @@ type Config struct {
 
 	OpenaiApiKey string `env:"OPENAI_API_KEY" required:"true"`
 
+	DiscordGhostsWebhookUrl string `env:"DISCORD_GHOSTS_WEBHOOK_URL" required:"true"`
+
 	SpacesBucketName     string `env:"SPACES_BUCKET_NAME" required:"true"`
 	SpacesRegionName     string `env:"SPACES_REGION_NAME" required:"true"`
 	SpacesEndpointOrigin string `env:"SPACES_ENDPOINT_URL" required:"true"`
@@ -246,7 +248,7 @@ func main() {
 		if err != nil {
 			log.Fatalf("Failed to initialize storage client for image generation: %v", err)
 		}
-		imagegenServer := imagegen.NewServer(q, ledgerClient, imageGeneration, imageStorage, alertsChan)
+		imagegenServer := imagegen.NewServer(q, ledgerClient, imageGeneration, imageStorage, config.DiscordGhostsWebhookUrl, alertsChan)
 		imagegenServer.RegisterRoutes(authClient, r.PathPrefix("/image-gen").Subrouter())
 	}
 
