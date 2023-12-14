@@ -43,8 +43,11 @@ func (c *generationClient) GenerateImages(ctx context.Context, prompt string, nu
 	// our prompt: this request will block until all images are ready
 	res, err := c.c.CreateImage(ctx, openai.ImageRequest{
 		Prompt:         prompt,
-		N:              NumImagesToGeneratePerPrompt,
+		Model:          openai.CreateImageModelDallE3,
+		N:              numImages,
+		Quality:        openai.CreateImageQualityStandard,
 		Size:           openai.CreateImageSize1024x1024,
+		Style:          openai.CreateImageStyleVivid,
 		ResponseFormat: openai.CreateImageResponseFormatURL,
 		User:           opaqueUserId,
 	})

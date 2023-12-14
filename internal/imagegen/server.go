@@ -21,7 +21,7 @@ import (
 )
 
 const MaxSubjectLen = 120
-const NumImagesToGeneratePerPrompt = 4
+const NumImagesToGeneratePerPrompt = 1
 
 const ImageAlertType = "image-generation"
 const ImageAlertPointsCost = 200

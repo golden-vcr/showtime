@@ -16,7 +16,7 @@ require (
 	github.com/nicklaw5/helix/v2 v2.25.1
 	github.com/pkg/browser v0.0.0-20210911075715-681adbf594b8
 	github.com/rs/cors v1.10.0
-	github.com/sashabaranov/go-openai v1.16.0
+	github.com/sashabaranov/go-openai v1.17.9
 	github.com/stretchr/testify v1.8.4
 	golang.org/x/sync v0.3.0
 )
