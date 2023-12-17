@@ -20,6 +20,10 @@ github.com/golden-vcr/auth v0.2.3 h1:oWj6OAD4MuN4AaenHDuCmVuAi4cdicLRQEb9U/M5iF0
 github.com/golden-vcr/auth v0.2.3/go.mod h1:54G8vTTmqASia3sWvUIlwWj5LYaVcPaXZQE0TLtLLa4=
 github.com/golden-vcr/ledger v0.3.1 h1:zl2yQ0iotNQfNvkYm3lVbq6d20YssADLyZxtG4Ghw2M=
 github.com/golden-vcr/ledger v0.3.1/go.mod h1:K7s8KBqbhvgzCuYAbdmPgx2FVFVmWgcKY0m39CF/uP8=
+github.com/golden-vcr/ledger v0.4.0 h1:5HB/vUijhEr/yE91/45mirJ+irIVK6y7MyrvYc0jHZQ=
+github.com/golden-vcr/ledger v0.4.0/go.mod h1:K7s8KBqbhvgzCuYAbdmPgx2FVFVmWgcKY0m39CF/uP8=
+github.com/golden-vcr/ledger v0.4.1 h1:atrxdBvnioo8IOLDl3j4tnb5vTZ9u3SJlX3PfIjsb+0=
+github.com/golden-vcr/ledger v0.4.1/go.mod h1:K7s8KBqbhvgzCuYAbdmPgx2FVFVmWgcKY0m39CF/uP8=
 github.com/golden-vcr/server-common v0.4.0 h1:euQPGKeHG9RvqxJrZlSn9s/oE7MAcURZ9HrWIicQloo=
 github.com/golden-vcr/server-common v0.4.0/go.mod h1:mZwxj+UU5yra4ts99QeY27vHvuwJqB6em+bYbuMc5xY=
 github.com/google/uuid v1.4.0 h1:MtMxsa51/r9yyhkyLsVeVt0B+BGQZzpQiTQ4eHZ8bc4=

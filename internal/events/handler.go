@@ -46,6 +46,14 @@ func (h *Handler) HandleEvent(ctx context.Context, subscription *helix.EventSubS
 		return h.handleChannelRaidEvent(ctx, data)
 	case helix.EventSubTypeChannelCheer:
 		return h.handleChannelCheerEvent(ctx, data)
+	case helix.EventSubTypeChannelSubscription:
+		return h.handleChannelSubscriptionEvent(ctx, data)
+	case helix.EventSubTypeChannelSubscriptionEnd:
+		return h.handleChannelSubscriptionEndEvent(ctx, data)
+	case helix.EventSubTypeChannelSubscriptionGift:
+		return h.handleChannelSubscriptionGiftEvent(ctx, data)
+	case helix.EventSubTypeChannelSubscriptionMessage:
+		return h.handleChannelSubscriptionMessageEvent(ctx, data)
 	default:
 		return ErrUnsupportedEventType
 	}

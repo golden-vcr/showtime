@@ -55,3 +55,28 @@ func (q *Queries) RecordViewerIdentity(ctx context.Context, arg RecordViewerIden
 	_, err := q.db.ExecContext(ctx, recordViewerIdentity, arg.TwitchUserID, arg.TwitchDisplayName)
 	return err
 }
+
+const recordViewerSubscribe = `-- name: RecordViewerSubscribe :exec
+insert into showtime.viewer (
+    twitch_user_id,
+    twitch_display_name,
+    first_subscribed_at
+) values (
+    $1,
+    $2,
+    now()
+)
+on conflict (twitch_user_id) do update set
+    twitch_display_name = excluded.twitch_display_name,
+    first_subscribed_at = coalesce(viewer.first_subscribed_at, excluded.first_subscribed_at)
+`
+
+type RecordViewerSubscribeParams struct {
+	TwitchUserID      string
+	TwitchDisplayName string
+}
+
+func (q *Queries) RecordViewerSubscribe(ctx context.Context, arg RecordViewerSubscribeParams) error {
+	_, err := q.db.ExecContext(ctx, recordViewerSubscribe, arg.TwitchUserID, arg.TwitchDisplayName)
+	return err
+}

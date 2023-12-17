@@ -75,4 +75,6 @@ type ShowtimeViewer struct {
 	TwitchDisplayName string
 	// Timestamp when the user first followed GoldenVCR on twitch, if ever.
 	FirstFollowedAt sql.NullTime
+	// Timestamp when the user first became a subscriber of GoldenVCR on Twitch, if ever. Does not guarantee that the user still has an ongoing subscription; and does not distinguish gift subs from subs purchased by the viewer directly.
+	FirstSubscribedAt sql.NullTime
 }

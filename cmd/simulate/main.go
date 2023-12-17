@@ -193,6 +193,55 @@ func buildEventPayload(subscriptionType string, channelUserId string, channelNam
 			Message:              "ghost of a baby seal",
 			Bits:                 200,
 		}
+	case helix.EventSubTypeChannelSubscription:
+		p = &helix.EventSubChannelSubscribeEvent{
+			UserID:               "1337",
+			UserLogin:            "bigjim",
+			UserName:             "BigJim",
+			BroadcasterUserID:    channelUserId,
+			BroadcasterUserLogin: channelName,
+			BroadcasterUserName:  channelName,
+			Tier:                 "1000",
+			IsGift:               false,
+		}
+	case helix.EventSubTypeChannelSubscriptionEnd:
+		p = &helix.EventSubChannelSubscribeEvent{
+			UserID:               "1337",
+			UserLogin:            "bigjim",
+			UserName:             "BigJim",
+			BroadcasterUserID:    channelUserId,
+			BroadcasterUserLogin: channelName,
+			BroadcasterUserName:  channelName,
+			Tier:                 "1000",
+			IsGift:               false,
+		}
+	case helix.EventSubTypeChannelSubscriptionGift:
+		p = &helix.EventSubChannelSubscriptionGiftEvent{
+			UserID:               "6969",
+			UserLogin:            "generousphil",
+			UserName:             "GenerousPhil",
+			BroadcasterUserID:    channelUserId,
+			BroadcasterUserLogin: channelName,
+			BroadcasterUserName:  channelName,
+			Total:                5,
+			Tier:                 "1000",
+		}
+	case helix.EventSubTypeChannelSubscriptionMessage:
+		p = &helix.EventSubChannelSubscriptionMessageEvent{
+			UserID:               "1337",
+			UserLogin:            "bigjim",
+			UserName:             "BigJim",
+			BroadcasterUserID:    channelUserId,
+			BroadcasterUserLogin: channelName,
+			BroadcasterUserName:  channelName,
+			Tier:                 "1000",
+			Message: helix.EventSubMessage{
+				Text: "hello, I have resubscribed",
+			},
+			CumulativeMonths: 3,
+			StreakMonths:     3,
+			DurationMonths:   1,
+		}
 	default:
 		log.Fatalf("subscription type %s is not supported in buildEventPayload", subscriptionType)
 	}

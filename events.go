@@ -57,4 +57,44 @@ var RequiredSubscriptions = []events.RequiredSubscription{
 			"bits:read",
 		},
 	},
+	{
+		Type:    helix.EventSubTypeChannelSubscription,
+		Version: "1",
+		TemplatedCondition: helix.EventSubCondition{
+			BroadcasterUserID: "{{.ChannelUserId}}",
+		},
+		RequiredScopes: []string{
+			"channel:read:subscriptions",
+		},
+	},
+	{
+		Type:    helix.EventSubTypeChannelSubscriptionEnd,
+		Version: "1",
+		TemplatedCondition: helix.EventSubCondition{
+			BroadcasterUserID: "{{.ChannelUserId}}",
+		},
+		RequiredScopes: []string{
+			"channel:read:subscriptions",
+		},
+	},
+	{
+		Type:    helix.EventSubTypeChannelSubscriptionGift,
+		Version: "1",
+		TemplatedCondition: helix.EventSubCondition{
+			BroadcasterUserID: "{{.ChannelUserId}}",
+		},
+		RequiredScopes: []string{
+			"channel:read:subscriptions",
+		},
+	},
+	{
+		Type:    helix.EventSubTypeChannelSubscriptionMessage,
+		Version: "1",
+		TemplatedCondition: helix.EventSubCondition{
+			BroadcasterUserID: "{{.ChannelUserId}}",
+		},
+		RequiredScopes: []string{
+			"channel:read:subscriptions",
+		},
+	},
 }
