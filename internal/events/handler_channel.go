@@ -103,7 +103,7 @@ func (h *Handler) handleChannelCheerEvent(ctx context.Context, data json.RawMess
 	ghostPrefix := "ghost of "
 	ghostSubject := ""
 	if ev.Bits == 200 {
-		ghostPrefixPos := strings.Index(ev.Message, ghostPrefix)
+		ghostPrefixPos := strings.Index(strings.ToLower(ev.Message), ghostPrefix)
 		if ghostPrefixPos >= 0 {
 			ghostSubject = strings.TrimSpace(ev.Message[ghostPrefixPos+len(ghostPrefix):])
 		}
