@@ -9,6 +9,7 @@ import (
 )
 
 type Queries interface {
+	GetBroadcastHistory(ctx context.Context) ([]queries.GetBroadcastHistoryRow, error)
 	GetTapeScreeningHistory(ctx context.Context) ([]queries.GetTapeScreeningHistoryRow, error)
 	GetBroadcastById(ctx context.Context, broadcastID int32) (queries.ShowtimeBroadcast, error)
 	GetScreeningsByBroadcastId(ctx context.Context, broadcastID int32) ([]queries.GetScreeningsByBroadcastIdRow, error)

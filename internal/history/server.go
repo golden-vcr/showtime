@@ -34,23 +34,29 @@ func (s *Server) RegisterRoutes(r *mux.Router) {
 }
 
 func (s *Server) handleGetSummary(res http.ResponseWriter, req *http.Request) {
-	// Get a row for each tape that's ever been screened, along with the set of
-	// broadcast IDs in which that tape was screened
-	rows, err := s.q.GetTapeScreeningHistory(req.Context())
+	// Get a row for each broadcast in which we've screened any tapes, including which
+	// tape IDs were screened in which broadcasts
+	rows, err := s.q.GetBroadcastHistory(req.Context())
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	// Build a summary to return to the client as JSON
+	// Build a reverse lookup which allows the client to look up which broadcasts a
+	// specific tape has been screened in
 	broadcastIdsByTapeId := make(map[string][]int)
-	for _, row := range rows {
-		tapeIdStr := fmt.Sprintf("%d", row.TapeID)
-		broadcastIds := make([]int, 0, len(row.BroadcastIds))
-		for _, broadcastId := range row.BroadcastIds {
-			broadcastIds = append(broadcastIds, int(broadcastId))
+	for _, broadcast := range rows {
+		for _, tapeId := range broadcast.TapeIds {
+			tapeIdStr := fmt.Sprintf("%d", tapeId)
+			existingBroadcastIds, ok := broadcastIdsByTapeId[tapeIdStr]
+			if ok {
+				broadcastIdsByTapeId[tapeIdStr] = append(existingBroadcastIds, int(broadcast.ID))
+			} else {
+				broadcastIds := make([]int, 0, 8)
+				broadcastIds = append(broadcastIds, int(broadcast.ID))
+				broadcastIdsByTapeId[tapeIdStr] = broadcastIds
+			}
 		}
-		broadcastIdsByTapeId[tapeIdStr] = broadcastIds
 	}
 	summary := Summary{BroadcastIdsByTapeId: broadcastIdsByTapeId}
 	if err := json.NewEncoder(res).Encode(summary); err != nil {

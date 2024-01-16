@@ -303,6 +303,33 @@ type mockScreening struct {
 	imageRequests []imageRequestSummary
 }
 
+func (m *mockQueries) GetBroadcastHistory(ctx context.Context) ([]queries.GetBroadcastHistoryRow, error) {
+	if m.err != nil {
+		return nil, m.err
+	}
+
+	rows := make([]queries.GetBroadcastHistoryRow, 0, len(m.broadcasts))
+	for _, broadcast := range m.broadcasts {
+		tapeIds := make([]int32, 0, 8)
+		lastScreeningStartedAt := time.Time{}
+		for _, screening := range m.screenings {
+			if screening.broadcastId == broadcast.id {
+				if screening.startedAt.Before(lastScreeningStartedAt) {
+					return nil, fmt.Errorf("test invariant failed: screenings should be listed in order based on start time")
+				}
+				tapeIds = append(tapeIds, screening.tapeId)
+				lastScreeningStartedAt = screening.startedAt
+			}
+		}
+		rows = append(rows, queries.GetBroadcastHistoryRow{
+			ID:        broadcast.id,
+			StartedAt: broadcast.startedAt,
+			TapeIds:   tapeIds,
+		})
+	}
+	return rows, nil
+}
+
 func (m *mockQueries) GetTapeScreeningHistory(ctx context.Context) ([]queries.GetTapeScreeningHistoryRow, error) {
 	if m.err != nil {
 		return nil, m.err
