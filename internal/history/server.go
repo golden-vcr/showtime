@@ -42,6 +42,25 @@ func (s *Server) handleGetSummary(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	// Build a list containing the summarized details of each past broadcast
+	broadcasts := make([]SummarizedBroadcast, 0, len(rows))
+	for _, row := range rows {
+		vodUrl := ""
+		if row.VodUrl.Valid {
+			vodUrl = row.VodUrl.String
+		}
+		tapeIds := make([]int, 0, len(row.TapeIds))
+		for _, tapeId := range row.TapeIds {
+			tapeIds = append(tapeIds, int(tapeId))
+		}
+		broadcasts = append(broadcasts, SummarizedBroadcast{
+			Id:        int(row.ID),
+			StartedAt: row.StartedAt,
+			VodUrl:    vodUrl,
+			TapeIds:   tapeIds,
+		})
+	}
+
 	// Build a reverse lookup which allows the client to look up which broadcasts a
 	// specific tape has been screened in
 	broadcastIdsByTapeId := make(map[string][]int)
@@ -58,7 +77,10 @@ func (s *Server) handleGetSummary(res http.ResponseWriter, req *http.Request) {
 			}
 		}
 	}
-	summary := Summary{BroadcastIdsByTapeId: broadcastIdsByTapeId}
+	summary := Summary{
+		Broadcasts:           broadcasts,
+		BroadcastIdsByTapeId: broadcastIdsByTapeId,
+	}
 	if err := json.NewEncoder(res).Encode(summary); err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 	}

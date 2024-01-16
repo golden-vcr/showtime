@@ -29,7 +29,7 @@ func Test_Server_handleGetSummary(t *testing.T) {
 			"result is empty when no data exists",
 			&mockQueries{},
 			http.StatusOK,
-			`{"broadcastIdsByTapeId":{}}`,
+			`{"broadcasts":[],"broadcastIdsByTapeId":{}}`,
 		},
 		{
 			"summary correlates tape IDs to broadcasts in which tapes were screened",
@@ -37,17 +37,18 @@ func Test_Server_handleGetSummary(t *testing.T) {
 				broadcasts: []mockBroadcast{
 					{
 						id:        1,
-						startedAt: time.Now().Add(-12 * time.Hour),
-						endedAt:   sql.NullTime{Valid: true, Time: time.Now().Add(-10 * time.Hour)},
+						startedAt: time.Date(1997, 9, 1, 12, 0, 0, 0, time.UTC),
+						endedAt:   sql.NullTime{Valid: true, Time: time.Date(1997, 9, 1, 14, 0, 0, 0, time.UTC)},
+						vodUrl:    "https://vods.com/1",
 					},
 					{
 						id:        2,
-						startedAt: time.Now().Add(-6 * time.Hour),
-						endedAt:   sql.NullTime{Valid: true, Time: time.Now().Add(-4 * time.Hour)},
+						startedAt: time.Date(1997, 9, 1, 18, 0, 0, 0, time.UTC),
+						endedAt:   sql.NullTime{Valid: true, Time: time.Date(1997, 9, 1, 20, 0, 0, 0, time.UTC)},
 					},
 					{
 						id:        3,
-						startedAt: time.Now().Add(-1 * time.Hour),
+						startedAt: time.Date(1997, 9, 1, 23, 0, 0, 0, time.UTC),
 					},
 				},
 				screenings: []mockScreening{
@@ -74,7 +75,7 @@ func Test_Server_handleGetSummary(t *testing.T) {
 				},
 			},
 			http.StatusOK,
-			`{"broadcastIdsByTapeId":{"11":[3],"22":[1],"44":[1,3],"66":[2]}}`,
+			`{"broadcasts":[{"id":1,"startedAt":"1997-09-01T12:00:00Z","vodUrl":"https://vods.com/1","tapeIds":[44,22]},{"id":2,"startedAt":"1997-09-01T18:00:00Z","vodUrl":"","tapeIds":[66]},{"id":3,"startedAt":"1997-09-01T23:00:00Z","vodUrl":"","tapeIds":[44,11]}],"broadcastIdsByTapeId":{"11":[3],"22":[1],"44":[1,3],"66":[2]}}`,
 		},
 		{
 			"database error is a 500",
@@ -292,6 +293,7 @@ type mockBroadcast struct {
 	id        int32
 	startedAt time.Time
 	endedAt   sql.NullTime
+	vodUrl    string
 }
 
 type mockScreening struct {
@@ -323,7 +325,11 @@ func (m *mockQueries) GetBroadcastHistory(ctx context.Context) ([]queries.GetBro
 		rows = append(rows, queries.GetBroadcastHistoryRow{
 			ID:        broadcast.id,
 			StartedAt: broadcast.startedAt,
-			TapeIds:   tapeIds,
+			VodUrl: sql.NullString{
+				Valid:  broadcast.vodUrl != "",
+				String: broadcast.vodUrl,
+			},
+			TapeIds: tapeIds,
 		})
 	}
 	return rows, nil

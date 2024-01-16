@@ -17,7 +17,15 @@ type Queries interface {
 }
 
 type Summary struct {
-	BroadcastIdsByTapeId map[string][]int `json:"broadcastIdsByTapeId"`
+	Broadcasts           []SummarizedBroadcast `json:"broadcasts"`
+	BroadcastIdsByTapeId map[string][]int      `json:"broadcastIdsByTapeId"`
+}
+
+type SummarizedBroadcast struct {
+	Id        int       `json:"id"`
+	StartedAt time.Time `json:"startedAt"`
+	VodUrl    string    `json:"vodUrl"`
+	TapeIds   []int     `json:"tapeIds"`
 }
 
 type Broadcast struct {
