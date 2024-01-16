@@ -1,3 +1,15 @@
+-- name: GetBroadcastHistory :many
+select
+    broadcast.id,
+    broadcast.started_at,
+    broadcast.vod_url,
+    array_agg(screening.tape_id order by screening.started_at)::integer[] as tape_ids
+from showtime.broadcast
+join showtime.screening
+    on screening.broadcast_id = broadcast.id
+group by broadcast.id
+order by broadcast.started_at;
+
 -- name: GetTapeScreeningHistory :many
 select
     screening.tape_id,

@@ -11,6 +11,56 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func Test_GetTapeBroadcastHistory(t *testing.T) {
+	tx := querytest.PrepareTx(t)
+	q := queries.New(tx)
+
+	// We should have no broadcast history initially
+	rows, err := q.GetBroadcastHistory(context.Background())
+	assert.NoError(t, err)
+	assert.Len(t, rows, 0)
+
+	// Simulate three broadcasts
+	_, err = tx.Exec(`
+		INSERT INTO showtime.broadcast (id, started_at, ended_at, vod_url) VALUES
+			(1, now() - '12h'::interval, now() - '10h'::interval, 'https://vods.com/1'),
+			(2, now() - '6h'::interval, now() - '4h'::interval, NULL),
+			(3, now() - '2h'::interval, NULL, NULL);
+	`)
+	assert.NoError(t, err)
+
+	// Simulate screenings within those broadcasts: tapes 40 and 50 in broadcast 1,
+	// then tape 60 in broadcast 2, then 70 and a repeat of 40 in broadcast 3 (which is
+	// ongoing)
+	_, err = tx.Exec(`
+		INSERT INTO showtime.screening (broadcast_id, tape_id, started_at, ended_at) VALUES
+			(1, 40, now() - '11h30m'::interval, now() - '11h'::interval),
+			(1, 50, now() - '11h'::interval, now() - '10h30m'::interval),
+			(2, 60, now() - '6h'::interval, now() - '5h'::interval),
+			(3, 40, now() - '2h'::interval, now() - '1h'::interval),
+			(3, 70, now() - '30m'::interval, NULL);
+	`)
+	assert.NoError(t, err)
+
+	// Our screening history should now reflect our state, with entries for the 4 unique
+	// tapes that we've screened
+	rows, err = q.GetBroadcastHistory(context.Background())
+	assert.NoError(t, err)
+	assert.Len(t, rows, 3)
+	assert.Equal(t, int32(1), rows[0].ID)
+	assert.Equal(t, int32(2), rows[1].ID)
+	assert.Equal(t, int32(3), rows[2].ID)
+	assert.Greater(t, rows[1].StartedAt, rows[0].StartedAt)
+	assert.Greater(t, rows[2].StartedAt, rows[1].StartedAt)
+	assert.True(t, rows[0].VodUrl.Valid)
+	assert.Equal(t, "https://vods.com/1", rows[0].VodUrl.String)
+	assert.False(t, rows[1].VodUrl.Valid)
+	assert.False(t, rows[2].VodUrl.Valid)
+	assert.Equal(t, []int32{40, 50}, rows[0].TapeIds)
+	assert.Equal(t, []int32{60}, rows[1].TapeIds)
+	assert.Equal(t, []int32{40, 70}, rows[2].TapeIds)
+}
+
 func Test_GetTapeScreeningHistory(t *testing.T) {
 	tx := querytest.PrepareTx(t)
 	q := queries.New(tx)

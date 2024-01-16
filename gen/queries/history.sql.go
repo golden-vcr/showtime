@@ -33,6 +33,54 @@ func (q *Queries) GetBroadcastById(ctx context.Context, broadcastID int32) (Show
 	return i, err
 }
 
+const getBroadcastHistory = `-- name: GetBroadcastHistory :many
+select
+    broadcast.id,
+    broadcast.started_at,
+    broadcast.vod_url,
+    array_agg(screening.tape_id order by screening.started_at)::integer[] as tape_ids
+from showtime.broadcast
+join showtime.screening
+    on screening.broadcast_id = broadcast.id
+group by broadcast.id
+order by broadcast.started_at
+`
+
+type GetBroadcastHistoryRow struct {
+	ID        int32
+	StartedAt time.Time
+	VodUrl    sql.NullString
+	TapeIds   []int32
+}
+
+func (q *Queries) GetBroadcastHistory(ctx context.Context) ([]GetBroadcastHistoryRow, error) {
+	rows, err := q.db.QueryContext(ctx, getBroadcastHistory)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetBroadcastHistoryRow
+	for rows.Next() {
+		var i GetBroadcastHistoryRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.StartedAt,
+			&i.VodUrl,
+			pq.Array(&i.TapeIds),
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getScreeningsByBroadcastId = `-- name: GetScreeningsByBroadcastId :many
 select
     screening.tape_id,
