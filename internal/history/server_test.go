@@ -8,7 +8,6 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -325,40 +324,6 @@ func (m *mockQueries) GetBroadcastHistory(ctx context.Context) ([]queries.GetBro
 			ID:        broadcast.id,
 			StartedAt: broadcast.startedAt,
 			TapeIds:   tapeIds,
-		})
-	}
-	return rows, nil
-}
-
-func (m *mockQueries) GetTapeScreeningHistory(ctx context.Context) ([]queries.GetTapeScreeningHistoryRow, error) {
-	if m.err != nil {
-		return nil, m.err
-	}
-
-	broadcastIdsByTapeId := make(map[int32]map[int32]struct{})
-	for _, s := range m.screenings {
-		if broadcastIdsByTapeId[s.tapeId] == nil {
-			broadcastIdsByTapeId[s.tapeId] = make(map[int32]struct{})
-		}
-		broadcastIdsByTapeId[s.tapeId][s.broadcastId] = struct{}{}
-	}
-
-	tapeIds := make([]int32, 0, len(broadcastIdsByTapeId))
-	for tapeId := range broadcastIdsByTapeId {
-		tapeIds = append(tapeIds, tapeId)
-	}
-	sort.Slice(tapeIds, func(i, j int) bool { return tapeIds[i] < tapeIds[j] })
-
-	rows := make([]queries.GetTapeScreeningHistoryRow, 0, len(tapeIds))
-	for _, tapeId := range tapeIds {
-		broadcastIds := make([]int32, 0, len(broadcastIdsByTapeId[tapeId]))
-		for broadcastId := range broadcastIdsByTapeId[tapeId] {
-			broadcastIds = append(broadcastIds, broadcastId)
-		}
-		sort.Slice(broadcastIds, func(i, j int) bool { return broadcastIds[i] < broadcastIds[j] })
-		rows = append(rows, queries.GetTapeScreeningHistoryRow{
-			TapeID:       tapeId,
-			BroadcastIds: broadcastIds,
 		})
 	}
 	return rows, nil

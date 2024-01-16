@@ -141,46 +141,6 @@ func (q *Queries) GetScreeningsByBroadcastId(ctx context.Context, broadcastID in
 	return items, nil
 }
 
-const getTapeScreeningHistory = `-- name: GetTapeScreeningHistory :many
-select
-    screening.tape_id,
-    array_agg(
-        distinct screening.broadcast_id
-        order by screening.broadcast_id
-    )::integer[] as broadcast_ids
-from showtime.screening
-group by screening.tape_id
-order by screening.tape_id
-`
-
-type GetTapeScreeningHistoryRow struct {
-	TapeID       int32
-	BroadcastIds []int32
-}
-
-func (q *Queries) GetTapeScreeningHistory(ctx context.Context) ([]GetTapeScreeningHistoryRow, error) {
-	rows, err := q.db.QueryContext(ctx, getTapeScreeningHistory)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []GetTapeScreeningHistoryRow
-	for rows.Next() {
-		var i GetTapeScreeningHistoryRow
-		if err := rows.Scan(&i.TapeID, pq.Array(&i.BroadcastIds)); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const getViewerLookupForBroadcast = `-- name: GetViewerLookupForBroadcast :many
 select
     viewer.twitch_user_id,

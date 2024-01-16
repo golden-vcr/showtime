@@ -10,17 +10,6 @@ join showtime.screening
 group by broadcast.id
 order by broadcast.started_at;
 
--- name: GetTapeScreeningHistory :many
-select
-    screening.tape_id,
-    array_agg(
-        distinct screening.broadcast_id
-        order by screening.broadcast_id
-    )::integer[] as broadcast_ids
-from showtime.screening
-group by screening.tape_id
-order by screening.tape_id;
-
 -- name: GetBroadcastById :one
 select
     *
