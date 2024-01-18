@@ -6,7 +6,7 @@ require (
 	github.com/aws/aws-sdk-go v1.46.0
 	github.com/codingconcepts/env v0.0.0-20200821220118-a8fbf8d84482
 	github.com/gempir/go-twitch-irc/v4 v4.0.0
-	github.com/golden-vcr/auth v0.2.3
+	github.com/golden-vcr/auth v0.3.0
 	github.com/golden-vcr/ledger v0.4.1
 	github.com/golden-vcr/server-common v0.5.5
 	github.com/google/uuid v1.4.0
@@ -15,7 +15,6 @@ require (
 	github.com/lib/pq v1.10.9
 	github.com/nicklaw5/helix/v2 v2.25.1
 	github.com/pkg/browser v0.0.0-20210911075715-681adbf594b8
-	github.com/rs/cors v1.10.0
 	github.com/sashabaranov/go-openai v1.17.9
 	github.com/stretchr/testify v1.8.4
 	golang.org/x/sync v0.6.0
