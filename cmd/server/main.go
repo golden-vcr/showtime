@@ -6,22 +6,18 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"net/http"
 	"os"
-	"os/signal"
-	"syscall"
 	"time"
 
 	"github.com/codingconcepts/env"
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
 	"github.com/lib/pq"
-	"github.com/rs/cors"
-	"golang.org/x/sync/errgroup"
 
 	"github.com/golden-vcr/auth"
 	"github.com/golden-vcr/ledger"
 	"github.com/golden-vcr/server-common/db"
+	"github.com/golden-vcr/server-common/entry"
 	"github.com/golden-vcr/showtime/gen/queries"
 	"github.com/golden-vcr/showtime/internal/admin"
 	"github.com/golden-vcr/showtime/internal/alerts"
@@ -69,19 +65,18 @@ type Config struct {
 }
 
 func main() {
+	app := entry.NewApplication("showtime")
+	defer app.Stop()
+
 	// Parse config from environment variables
 	err := godotenv.Load()
 	if err != nil && !os.IsNotExist(err) {
-		log.Fatalf("error loading .env file: %v", err)
+		app.Fail("Failed to load .env file", err)
 	}
 	config := Config{}
 	if err := env.Set(&config); err != nil {
-		log.Fatalf("error loading config: %v", err)
+		app.Fail("Failed to load config", err)
 	}
-
-	// Shut down cleanly on signal
-	ctx, close := signal.NotifyContext(context.Background(), os.Interrupt, os.Kill, syscall.SIGTERM)
-	defer close()
 
 	// Configure our database connection and initialize a Queries struct, so we can read
 	// and write to the 'showtime' schema in response to HTTP requests, EventSub
@@ -96,11 +91,11 @@ func main() {
 	)
 	db, err := sql.Open("postgres", connectionString)
 	if err != nil {
-		log.Fatalf("error opening database: %v", err)
+		app.Fail("Failed to open sql.DB", err)
 	}
 	defer db.Close()
 	if err := db.Ping(); err != nil {
-		log.Fatalf("error connecting to database: %v", err)
+		app.Fail("Failed to connect to database", err)
 	}
 	q := queries.New(db)
 
@@ -123,14 +118,14 @@ func main() {
 			log.Fatalf("pq.Listener failed: %v", err)
 		}
 	})
-	changeListener, err := broadcast.NewChangeListener(ctx, pqListener, q)
+	changeListener, err := broadcast.NewChangeListener(app.Context(), pqListener, q)
 	if err != nil {
-		log.Fatalf("failed to initialize ChangeListener: %v", err)
+		app.Fail("Failed to initialize ChangeListener", err)
 	}
 	go func() {
-		err := changeListener.Run(ctx)
+		err := changeListener.Run(app.Context())
 		if err != nil && !errors.Is(err, context.Canceled) {
-			log.Fatalf("ChangeListener got an error: %v", err)
+			app.Fail("ChangeListener got an error", err)
 		}
 	}()
 
@@ -142,9 +137,9 @@ func main() {
 	// We need an auth client in order to validate access tokens, and we need a ledger
 	// client in order to perform operations that require deducting Golden VCR Fun
 	// Points from the auth'd user's balance
-	authClient, err := auth.NewClient(ctx, config.AuthURL)
+	authClient, err := auth.NewClient(app.Context(), config.AuthURL)
 	if err != nil {
-		log.Fatalf("error initializing auth client: %v", err)
+		app.Fail("Failed to initialize auth client", err)
 	}
 	ledgerClient := ledger.NewClient(config.LedgerURL)
 
@@ -152,11 +147,11 @@ func main() {
 	// so we can identify the broadcaster
 	twitchClient, err := twitch.NewClientWithAppToken(config.TwitchClientId, config.TwitchClientSecret)
 	if err != nil {
-		log.Fatalf("error initializing Twitch API client: %v", err)
+		app.Fail("Failed to initialize Twitch API client", err)
 	}
 	channelUserId, err := twitch.GetChannelUserId(twitchClient, config.TwitchChannelName)
 	if err != nil {
-		log.Fatalf("error getting Twitch channel user ID: %v", err)
+		app.Fail("Failed to get Twitch channel user ID", err)
 	}
 
 	// Start setting up our HTTP handlers, using gorilla/mux for routing
@@ -169,7 +164,7 @@ func main() {
 		// events.Handler gets called in response to EventSub notifications, and
 		// whenever it decides that we should broadcast an alert, it write a new
 		// alert.Alert into alertsChan
-		eventsHandler := events.NewHandler(ctx, q, alertsChan, authServiceClient, ledgerClient)
+		eventsHandler := events.NewHandler(app.Context(), q, alertsChan, authServiceClient, ledgerClient)
 
 		// events.Server implements the POST callback that Twitch hits (once we've run
 		// cmd/init/main.go to create all EventSub notifications mandated by events.go)
@@ -180,7 +175,7 @@ func main() {
 
 		// The sse.Handler exposes our Alert channel via an SSE endpoint, notifying HTTP
 		// clients whenever a Twitch-initiated event results in a new alert
-		alertsHandler := sse.NewHandler[*alerts.Alert](ctx, alertsChan)
+		alertsHandler := sse.NewHandler[*alerts.Alert](app.Context(), alertsChan)
 		r.Path("/alerts").Methods("GET").Handler(alertsHandler)
 	}
 
@@ -191,7 +186,7 @@ func main() {
 		// The chat.Agent sits in IRC chat and interprets messages, writing to our
 		// logEventsChan whenever the chat log UI should be updated
 		logEventsChan := make(chan *chat.LogEvent, 32)
-		chatAgent, err := chat.NewAgent(ctx, 64, logEventsChan, config.TwitchChannelName, time.Second)
+		chatAgent, err := chat.NewAgent(app.Context(), 64, logEventsChan, config.TwitchChannelName, time.Second)
 		if err != nil {
 			log.Fatalf("error initializing chat agent: %v", err)
 		}
@@ -201,7 +196,7 @@ func main() {
 		defer chatAgent.Disconnect()
 
 		// The sse.Handler exposes that LogEvent channel via an SSE endpoint
-		chatHandler := sse.NewHandler[*chat.LogEvent](ctx, logEventsChan)
+		chatHandler := sse.NewHandler[*chat.LogEvent](app.Context(), logEventsChan)
 		r.Path("/chat").Methods("GET").Handler(chatHandler)
 	}
 
@@ -222,7 +217,7 @@ func main() {
 	// GET /state provides clients with real-time information about the current state of
 	// the broadcast: whether we've live, what tape is being screened, etc.
 	{
-		stateHandler := sse.NewHandler(ctx, changeListener.GetStateChanges())
+		stateHandler := sse.NewHandler(app.Context(), changeListener.GetStateChanges())
 		stateHandler.OnConnectEventFunc = func() broadcast.State {
 			return changeListener.GetState()
 		}
@@ -252,34 +247,7 @@ func main() {
 		imagegenServer.RegisterRoutes(authClient, r.PathPrefix("/image-gen").Subrouter())
 	}
 
-	// Inject CORS support, since some of these APIs need to be called from the Golden
-	// VCR extension, which is hosted by Twitch
-	withCors := cors.New(cors.Options{
-		AllowedOrigins: []string{
-			"https://localhost:5180",
-			fmt.Sprintf("https://%s.ext-twitch.tv", config.TwitchExtensionClientId),
-		},
-		AllowedMethods: []string{http.MethodGet},
-	})
-	addr := fmt.Sprintf("%s:%d", config.BindAddr, config.ListenPort)
-	server := &http.Server{Addr: addr, Handler: withCors.Handler(r)}
-
 	// Handle incoming HTTP connections until our top-level context is canceled, at
 	// which point shut down cleanly
-	fmt.Printf("Listening on %s...\n", addr)
-	var wg errgroup.Group
-	wg.Go(server.ListenAndServe)
-
-	select {
-	case <-ctx.Done():
-		fmt.Printf("Received signal; closing server...\n")
-		server.Shutdown(context.Background())
-	}
-
-	err = wg.Wait()
-	if err == http.ErrServerClosed {
-		fmt.Printf("Server closed.\n")
-	} else {
-		log.Fatalf("error running server: %v", err)
-	}
+	entry.RunServer(app, r, config.BindAddr, int(config.ListenPort))
 }
