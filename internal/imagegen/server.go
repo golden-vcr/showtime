@@ -61,6 +61,14 @@ func (s *Server) RegisterRoutes(c auth.Client, r *mux.Router) {
 }
 
 func (s *Server) handleRequest(res http.ResponseWriter, req *http.Request) {
+	// This functionality has been superseded by the new architecture; we no longer
+	// support generating image via showtime API (generating images deducts users' fun
+	// points and costs us real money, so stub it out so it can't be used)
+	if true {
+		http.Error(res, "operation no longer supported", http.StatusServiceUnavailable)
+		return
+	}
+
 	// Identify the user from their authorization token
 	claims, err := auth.GetClaims(req)
 	if err != nil {
